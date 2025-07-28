@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Aim Trainer</title>
+    <style>
+        /* --- GLOBAL STYLES & THEME --- */
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #e94560;
+            --secondary-color: #16213e;
+            --font-color: #f0f0f0;
+            --glow-color: #0f3460;
+            --neon-cyan: #00ffff;
+            --gold: #ffd700;
+            --silver: #c0c0c0;
+            --bronze: #cd7f32;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--font-color);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        canvas {
+            background-color: var(--secondary-color);
+            background-image: 
+                linear-gradient(var(--glow-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--glow-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            cursor: none;
+            border-radius: 8px;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
+            position: absolute;
+        }
+
+        /* --- UI & MENUS --- */
+        .menu {
+            background-color: rgba(22, 33, 62, 0.95);
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--glow-color);
+            z-index: 10;
+        }
+        
+        .menu h1 {
+            color: var(--primary-color);
+            margin-top: 0;
+            text-shadow: 0 0 10px var(--primary-color);
+            letter-spacing: 2px;
+        }
+
+        .menu-section {
+            margin-bottom: 25px;
+        }
+
+        .menu-section h3 {
+            margin-bottom: 15px;
+            color: var(--neon-cyan);
+            border-bottom: 1px solid var(--glow-color);
+            padding-bottom: 5px;
+        }
+
+        button, .button {
+            background-color: var(--primary-color);
+            color: var(--font-color);
+            border: none;
+            padding: 12px 25px;
+            margin: 5px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+            min-width: 180px;
+        }
+
+        button:hover {
+            background-color: #f76a82;
+            box-shadow: 0 0 15px var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .selector button {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--glow-color);
+        }
+
+        .selector button.active {
+            background-color: var(--neon-cyan);
+            color: var(--bg-color);
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        /* --- IN-GAME HUD --- */
+        #hud {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            color: var(--font-color);
+            font-size: 18px;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            text-shadow: 0 0 5px #000;
+        }
+
+        .hud-group {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        
+        #bot-scoreboard {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.4);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            gap: 20px;
+            color: var(--neon-cyan);
+        }
+
+        #bot-scoreboard .player { color: var(--font-color); }
+        #bot-scoreboard .bot { color: var(--primary-color); }
+
+        #pause-menu, #summary-screen {
+            position: absolute;
+            background: rgba(26, 26, 46, 0.9);
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 20;
+        }
+        
+        /* --- SUMMARY SCREEN --- */
+        #summary-content {
+            background-color: var(--secondary-color);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            width: 80%;
+            max-width: 700px;
+            border: 1px solid var(--glow-color);
+        }
+
+        #summary-content h2 {
+            font-size: 36px;
+            margin-top: 0;
+        }
+
+        #summary-content .victory { color: var(--neon-cyan); text-shadow: 0 0 10px var(--neon-cyan); }
+        #summary-content .defeat { color: var(--primary-color); text-shadow: 0 0 10px var(--primary-color); }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .stat-item {
+            background: var(--bg-color);
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .stat-item .label {
+            font-size: 14px;
+            color: var(--neon-cyan);
+            display: block;
+        }
+        .stat-item .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .stat-item .medal { font-size: 24px; }
+        .stat-item .gold { color: var(--gold); }
+        .stat-item .silver { color: var(--silver); }
+        .stat-item .bronze { color: var(--bronze); }
+        
+        #performance-tip {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--bg-color);
+            border-left: 4px solid var(--neon-cyan);
+            font-style: italic;
+        }
+        
+        #countdown {
+            position: absolute;
+            font-size: 120px;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-shadow: 0 0 20px var(--primary-color);
+            z-index: 15;
+            animation: countdown-anim 1s infinite;
+        }
+
+        @keyframes countdown-anim {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* --- ANIMATIONS --- */
+        .hidden {
+            display: none !important;
+        }
+
+        @keyframes screenShake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(3px, 3px); }
+            50% { transform: translate(-3px, -3px); }
+            75% { transform: translate(3px, -3px); }
+        }
+
+        .shake {
+            animation: screenShake 0.1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="start-menu" class="menu">
+            <h1>🔫 Gemini Aim Trainer</h1>
+            <p>Hone your precision. Dominate the competition.</p>
+            
+            <div class="menu-section">
+                <h3>Game Mode</h3>
+                <div id="mode-selector" class="selector">
+                    <button data-mode="ReflexGrid" class="active">Reflex Grid</button>
+                    <button data-mode="BotChallenge">1v1 Bot Challenge</button>
+                    <button data-mode="FlickFrenzy">Flick Frenzy</button>
+                </div>
+            </div>
+
+            <div id="level-selection" class="menu-section">
+                <h3>Level (Reflex Grid)</h3>
+                <input type="range" id="level-slider" min="1" max="100" value="1" style="width: 80%;">
+                <span id="level-display">1</span>
+            </div>
+
+            <div id="bot-difficulty-selection" class="menu-section hidden">
+                <h3>Bot Difficulty</h3>
+                <div id="bot-selector" class="selector">
+                    <button data-difficulty="Novice" class="active">Novice</button>
+                    <button data-difficulty="Intermediate">Intermediate</button>
+                    <button data-difficulty="Pro">Pro</button>
+                    <button data-difficulty="Elite">Elite</button>
+                </div>
+            </div>
+            
+            <button id="start-button">Start Game</button>
+            <button id="reticle-button">Change Reticle</button>
+        </div>
+
+        <canvas id="game-canvas"></canvas>
+        <div id="hud" class="hidden">
+             <div class="hud-group">
+                <div>🎯 Accuracy: <span id="accuracy">100.0</span>%</div>
+                <div>💥 Hits: <span id="hits">0</span></div>
+                <div>❌ Misses: <span id="misses">0</span></div>
+            </div>
+             <div class="hud-group">
+                <div>⏱️ Time: <span id="time">0.0</span>s</div>
+                <div>⚡ Avg Time/Target: <span id="avg-reaction">N/A</span></div>
+                <div id="level-info">Level: <span id="current-level">1</span></div>
+                <div id="fps-counter">FPS: <span id="fps">60</span></div>
+            </div>
+        </div>
+        <div id="bot-scoreboard" class="hidden">
+            <div class="player">Player: <span id="player-score">0</span></div>
+            <div class="bot">Bot: <span id="bot-score">0</span></div>
+        </div>
+        <div id="countdown" class="hidden">3</div>
+
+        <div id="pause-menu" class="hidden">
+            <div class="menu">
+                <h1>PAUSED</h1>
+                <button id="resume-button">Resume</button>
+                <button id="restart-level-button">Restart Level</button>
+                <button id="main-menu-button">Main Menu</button>
+            </div>
+        </div>
+
+        <div id="summary-screen" class="hidden">
+            <div id="summary-content">
+                <h2 id="summary-title">Level Complete!</h2>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="label">Score</span>
+                        <span id="summary-score" class="value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Accuracy</span>
+                        <span id="summary-accuracy" class="value">100%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Avg. Reaction</span>
+                        <span id="summary-avg-reaction" class="value">0ms</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Medal</span>
+                        <span id="summary-medal" class="value medal">-</span>
+                    </div>
+                </div>
+                <div id="performance-tip">
+                    <p id="tip-text">Good job!</p>
+                </div>
+                <div class="summary-buttons">
+                    <button id="summary-retry-button">Retry Level</button>
+                    <button id="summary-next-button">Next Level</button>
+                    <button id="summary-menu-button">Main Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="hit-sound" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"></audio>
+    <audio id="shoot-sound" src="data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhSAAAAEB/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/"></audio>
+    <audio id="win-sound" src="data:audio/wav;base64,UklGRl9vAE9XQVZFZm10IBAAAAABAAEAwF0AAIAuAgAEABAAZGF0YQB9vAE9Z4Kgw6IMgQ+dEIkPlhCFD5oQhQ+bEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQhQ+cEIUPnBCFD5wQ-"></audio>
+    <audio id="lose-sound" src="data:audio/wav;base64,UklGRqgAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YakAAAB/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f3-"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- DOM ELEMENTS ---
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const startMenu = document.getElementById('start-menu');
+            const hud = document.getElementById('hud');
+            const pauseMenu = document.getElementById('pause-menu');
+            const summaryScreen = document.getElementById('summary-screen');
+            const countdownEl = document.getElementById('countdown');
+
+            // --- AUDIO ELEMENTS ---
+            const sounds = {
+                hit: document.getElementById('hit-sound'),
+                shoot: document.getElementById('shoot-sound'),
+                win: document.getElementById('win-sound'),
+                lose: document.getElementById('lose-sound'),
+            };
+
+            // --- GAME STATE & CONFIGURATION ---
+            let gameState = {
+                running: false,
+                paused: false,
+                mode: 'ReflexGrid',
+                level: 1,
+                botDifficulty: 'Novice',
+                animationFrameId: null,
+                startTime: 0,
+                lastFrameTime: 0,
+                clickCooldown: false,
+            };
+            
+            let stats = {};
+            let targets = [];
+            let particles = [];
+            let bot = {};
+
+            const mouse = { x: 0, y: 0 };
+
+            const reticles = [
+                { type: 'cross', color: '#00ffff', size: 15 },
+                { type: 'dot', color: '#e94560', size: 5 },
+                { type: 'circle', color: '#ffffff', size: 10 },
+            ];
+            let currentReticleIndex = 0;
+
+            const botDifficulties = {
+                'Novice': { reaction: 750, missChance: 0.25 },
+                'Intermediate': { reaction: 500, missChance: 0.15 },
+                'Pro': { reaction: 300, missChance: 0.05 },
+                'Elite': { reaction: 150, missChance: 0.01 },
+            };
+
+            // --- INITIALIZATION ---
+            function init() {
+                setupUI();
+                setupEventListeners();
+                resizeCanvas();
+            }
+            
+            function setupUI() {
+                // Mode Selector
+                document.querySelectorAll('#mode-selector button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        gameState.mode = e.target.dataset.mode;
+                        updateActiveButton('#mode-selector', e.target);
+                        document.getElementById('level-selection').classList.toggle('hidden', gameState.mode !== 'ReflexGrid');
+                        document.getElementById('bot-difficulty-selection').classList.toggle('hidden', gameState.mode !== 'BotChallenge');
+                    });
+                });
+                
+                // Level Slider
+                const levelSlider = document.getElementById('level-slider');
+                const levelDisplay = document.getElementById('level-display');
+                levelSlider.addEventListener('input', (e) => {
+                    gameState.level = parseInt(e.target.value);
+                    levelDisplay.textContent = gameState.level;
+                });
+
+                // Bot Difficulty Selector
+                document.querySelectorAll('#bot-selector button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        gameState.botDifficulty = e.target.dataset.difficulty;
+                        updateActiveButton('#bot-selector', e.target);
+                    });
+                });
+
+                // Start Game Button
+                document.getElementById('start-button').addEventListener('click', startGame);
+
+                // Reticle Change Button
+                document.getElementById('reticle-button').addEventListener('click', changeReticle);
+            }
+
+            function setupEventListeners() {
+                window.addEventListener('resize', resizeCanvas);
+                canvas.addEventListener('mousemove', (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    mouse.x = e.clientX - rect.left;
+                    mouse.y = e.clientY - rect.top;
+                });
+                canvas.addEventListener('mousedown', handleShoot);
+                
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && gameState.running) togglePause();
+                    if (e.key.toLowerCase() === 'r' && gameState.running && !gameState.paused) restartLevel();
+                });
+                
+                // Pause Menu Buttons
+                document.getElementById('resume-button').addEventListener('click', togglePause);
+                document.getElementById('restart-level-button').addEventListener('click', restartLevel);
+                document.getElementById('main-menu-button').addEventListener('click', () => showScreen('start-menu'));
+
+                // Summary Screen Buttons
+                document.getElementById('summary-retry-button').addEventListener('click', restartLevel);
+                document.getElementById('summary-next-button').addEventListener('click', nextLevel);
+                document.getElementById('summary-menu-button').addEventListener('click', () => showScreen('start-menu'));
+            }
+            
+            function resizeCanvas() {
+                const aspectRatio = 16 / 9;
+                let width = window.innerWidth * 0.9;
+                let height = window.innerHeight * 0.9;
+
+                if (width / height > aspectRatio) {
+                    width = height * aspectRatio;
+                } else {
+                    height = width / aspectRatio;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            // --- GAME FLOW ---
+            function startGame() {
+                showScreen('game');
+                startCountdown(3, () => {
+                    resetState();
+                    gameState.running = true;
+                    gameState.paused = false;
+                    gameState.startTime = performance.now();
+                    gameState.lastFrameTime = gameState.startTime;
+                    gameLoop();
+                });
+            }
+            
+            function endGame() {
+                gameState.running = false;
+                cancelAnimationFrame(gameState.animationFrameId);
+                showSummary();
+            }
+
+            function togglePause() {
+                if (!gameState.running) return;
+                gameState.paused = !gameState.paused;
+                showScreen(gameState.paused ? 'pause' : 'game');
+                if (!gameState.paused) {
+                    gameState.startTime += performance.now() - gameState.pauseTime;
+                    gameLoop();
+                } else {
+                    gameState.pauseTime = performance.now();
+                    cancelAnimationFrame(gameState.animationFrameId);
+                    drawPauseOverlay();
+                }
+            }
+            
+            function restartLevel() {
+                showScreen('game');
+                startCountdown(3, () => {
+                    resetState();
+                    gameState.running = true;
+                    gameState.paused = false;
+                    gameState.startTime = performance.now();
+                    gameState.lastFrameTime = gameState.startTime;
+                    gameLoop();
+                });
+            }
+
+            function nextLevel() {
+                if (gameState.mode === 'ReflexGrid') {
+                    gameState.level = Math.min(100, gameState.level + 1);
+                }
+                restartLevel();
+            }
+
+            // --- STATE & UI MANAGEMENT ---
+            function resetState() {
+                stats = {
+                    hits: 0,
+                    misses: 0,
+                    totalShots: 0,
+                    reactionTimes: [],
+                    score: 0,
+                    missLocations: { q1:0, q2:0, q3:0, q4:0 } // Top-right, Top-left, Bottom-left, Bottom-right
+                };
+                if (gameState.mode === 'BotChallenge') {
+                    bot = {
+                        score: 0,
+                        isShooting: false,
+                        config: botDifficulties[gameState.botDifficulty],
+                    };
+                }
+                targets = [];
+                particles = [];
+                gameState.lastSpawnTime = 0;
+                gameState.lastTargetHitTime = performance.now();
+                
+                // Initial target spawn
+                spawnTarget();
+            }
+
+            function showScreen(screen) {
+                startMenu.classList.add('hidden');
+                hud.classList.add('hidden');
+                canvas.classList.add('hidden');
+                pauseMenu.classList.add('hidden');
+                summaryScreen.classList.add('hidden');
+                document.getElementById('bot-scoreboard').classList.add('hidden');
+
+                switch (screen) {
+                    case 'start-menu':
+                        startMenu.classList.remove('hidden');
+                        break;
+                    case 'game':
+                        hud.classList.remove('hidden');
+                        canvas.classList.remove('hidden');
+                        if (gameState.mode === 'BotChallenge') {
+                            document.getElementById('bot-scoreboard').classList.remove('hidden');
+                        }
+                        break;
+                    case 'pause':
+                        hud.classList.remove('hidden');
+                        canvas.classList.remove('hidden');
+                        pauseMenu.classList.remove('hidden');
+                        if (gameState.mode === 'BotChallenge') {
+                            document.getElementById('bot-scoreboard').classList.remove('hidden');
+                        }
+                        break;
+                    case 'summary':
+                        summaryScreen.classList.remove('hidden');
+                        break;
+                }
+            }
+
+            function startCountdown(seconds, callback) {
+                let count = seconds;
+                countdownEl.textContent = count;
+                countdownEl.classList.remove('hidden');
+                
+                const interval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        countdownEl.textContent = count;
+                    } else {
+                        clearInterval(interval);
+                        countdownEl.classList.add('hidden');
+                        callback();
+                    }
+                }, 1000);
+            }
+
+            // --- GAME LOOP ---
+            function gameLoop(timestamp) {
+                if (!gameState.running || gameState.paused) return;
+                
+                gameState.animationFrameId = requestAnimationFrame(gameLoop);
+                
+                const deltaTime = (timestamp - gameState.lastFrameTime) / 1000; // in seconds
+                update(timestamp, deltaTime);
+                draw();
+                
+                updateHUD(timestamp, deltaTime);
+                gameState.lastFrameTime = timestamp;
+            }
+
+            function update(timestamp, deltaTime) {
+                // Update based on game mode
+                const modeHandlers = {
+                    ReflexGrid: updateReflexGrid,
+                    BotChallenge: updateBotChallenge,
+                    FlickFrenzy: updateFlickFrenzy,
+                };
+                modeHandlers[gameState.mode](timestamp, deltaTime);
+                
+                // Update targets and particles
+                targets.forEach(t => t.update(deltaTime));
+                particles.forEach((p, index) => {
+                    p.update(deltaTime);
+                    if (p.life <= 0) particles.splice(index, 1);
+                });
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                targets.forEach(t => t.draw(ctx));
+                particles.forEach(p => p.draw(ctx));
+                drawReticle(ctx, mouse.x, mouse.y);
+            }
+
+            // --- GAME MODE LOGIC ---
+            function getLevelConfig(level) {
+                const progress = (level - 1) / 99; // 0 to 1
+                return {
+                    targetCount: 30,
+                    targetSize: Math.max(10, 40 - progress * 30),
+                    spawnDelay: Math.max(200, 1000 - progress * 800),
+                    targetLifetime: Math.max(1000, 3000 - progress * 2000),
+                    hasDecoys: level > 10,
+                    decoyChance: Math.min(0.3, progress * 0.3),
+                    moves: level > 20,
+                    moveSpeed: 50 + progress * 150,
+                    teleports: level > 40,
+                    teleportInterval: Math.max(500, 1500 - progress * 1000),
+                };
+            }
+
+            function updateReflexGrid(timestamp) {
+                const config = getLevelConfig(gameState.level);
+                
+                // Spawn new targets
+                if (timestamp - gameState.lastSpawnTime > config.spawnDelay && targets.length < 5) {
+                    spawnTarget(config);
+                    gameState.lastSpawnTime = timestamp;
+                }
+
+                // Check for expired targets
+                targets.forEach((target, index) => {
+                    if (timestamp - target.spawnTime > config.targetLifetime) {
+                        targets.splice(index, 1);
+                        if (target.type === 'normal') {
+                            stats.misses++;
+                            stats.totalShots++;
+                        }
+                    }
+                });
+                
+                if (stats.hits + stats.misses >= config.targetCount) {
+                    endGame();
+                }
+            }
+
+            function updateBotChallenge(timestamp) {
+                const config = { targetCount: 20, targetLifetime: 4000 };
+
+                // Spawn logic
+                if (targets.length === 0 && (stats.hits + bot.score < config.targetCount)) {
+                    spawnTarget({targetLifetime: config.targetLifetime, moves: true, moveSpeed: 100});
+                }
+                
+                // Bot AI
+                if (targets.length > 0 && !bot.isShooting) {
+                    bot.isShooting = true;
+                    setTimeout(() => {
+                        if (targets.length > 0) { // Check if target still exists
+                             if (Math.random() > bot.config.missChance) {
+                                bot.score++;
+                                playSound(sounds.hit);
+                                createParticles(targets[0].x, targets[0].y, '#e94560');
+                                targets.shift(); // Bot always hits the first target
+                             }
+                        }
+                        bot.isShooting = false;
+                    }, bot.config.reaction + (Math.random() * 100 - 50)); // Add some variance
+                }
+
+                // Check for expired targets
+                targets.forEach((target, index) => {
+                    if (timestamp - target.spawnTime > config.targetLifetime) {
+                        targets.splice(index, 1);
+                    }
+                });
+
+                if (stats.hits + bot.score >= config.targetCount) {
+                    endGame();
+                }
+            }
+
+            function updateFlickFrenzy() {
+                // Spawn a new target if none exist
+                if (targets.length === 0 && stats.totalShots < 30) {
+                     spawnTarget({ targetLifetime: 10000 }); // Long lifetime
+                }
+                
+                if (stats.totalShots >= 30) {
+                    endGame();
+                }
+            }
+
+            // --- CORE MECHANICS ---
+            function handleShoot(e) {
+                if (e.button !== 0 || gameState.clickCooldown || gameState.paused || !gameState.running) return;
+
+                playSound(sounds.shoot);
+                gameState.clickCooldown = true;
+                setTimeout(() => { gameState.clickCooldown = false; }, 150);
+
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                let hit = false;
+                for (let i = targets.length - 1; i >= 0; i--) {
+                    const target = targets[i];
+                    const distance = Math.sqrt((clickX - target.x) ** 2 + (clickY - target.y) ** 2);
+                    if (distance < target.radius) {
+                        hit = true;
+                        
+                        const reactionTime = performance.now() - target.spawnTime;
+                        stats.reactionTimes.push(reactionTime);
+                        
+                        if (target.type === 'normal') {
+                            stats.hits++;
+                            stats.score += Math.round(10000 / (reactionTime + 50));
+                            playSound(sounds.hit);
+                            createParticles(target.x, target.y, '#00ffff');
+                            document.body.classList.add('shake');
+                            setTimeout(() => document.body.classList.remove('shake'), 100);
+                        } else { // Decoy
+                             stats.score -= 500;
+                             playSound(sounds.lose);
+                        }
+                        
+                        targets.splice(i, 1);
+                        gameState.lastTargetHitTime = performance.now();
+                        break;
+                    }
+                }
+                
+                if (!hit) {
+                    stats.misses++;
+                    // Track miss location relative to canvas center
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    if (clickX > centerX && clickY < centerY) stats.missLocations.q1++;
+                    else if (clickX < centerX && clickY < centerY) stats.missLocations.q2++;
+                    else if (clickX < centerX && clickY > centerY) stats.missLocations.q3++;
+                    else stats.missLocations.q4++;
+
+                }
+                stats.totalShots = stats.hits + stats.misses;
+            }
+
+            function spawnTarget(config = getLevelConfig(gameState.level)) {
+                const radius = config.targetSize / 2;
+                const target = {
+                    x: Math.random() * (canvas.width - radius * 2) + radius,
+                    y: Math.random() * (canvas.height - radius * 2) + radius,
+                    radius: radius,
+                    type: config.hasDecoys && Math.random() < config.decoyChance ? 'decoy' : 'normal',
+                    color: '#00ffff',
+                    spawnTime: performance.now(),
+                    life: 1,
+                    update(dt) {
+                        if (config.moves && this.type === 'normal') {
+                            if (!this.vx) { // Initialize velocity
+                                const angle = Math.random() * Math.PI * 2;
+                                this.vx = Math.cos(angle) * config.moveSpeed;
+                                this.vy = Math.sin(angle) * config.moveSpeed;
+                            }
+                            this.x += this.vx * dt;
+                            this.y += this.vy * dt;
+
+                            // Bounce off walls
+                            if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) this.vx *= -1;
+                            if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) this.vy *= -1;
+                        }
+                         if (config.teleports && this.type === 'normal') {
+                            if (!this.lastTeleport) this.lastTeleport = this.spawnTime;
+                            if (performance.now() - this.lastTeleport > config.teleportInterval) {
+                                this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+                                this.y = Math.random() * (canvas.height - this.radius * 2) + this.radius;
+                                this.lastTeleport = performance.now();
+                            }
+                        }
+                    },
+                    draw(ctx) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                        
+                        const color = this.type === 'decoy' ? '#e94560' : this.color;
+                        ctx.fillStyle = color;
+                        ctx.shadowColor = color;
+                        ctx.shadowBlur = 15;
+                        ctx.fill();
+                        
+                        // Inner circle
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(26, 26, 46, 0.7)';
+                        ctx.fill();
+                        
+                        ctx.restore();
+                    }
+                };
+                targets.push(target);
+            }
+
+            function createParticles(x, y, color) {
+                for (let i = 0; i < 20; i++) {
+                    particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 500,
+                        vy: (Math.random() - 0.5) * 500,
+                        life: 0.5,
+                        size: Math.random() * 3 + 1,
+                        color: color,
+                        update(dt) {
+                            this.x += this.vx * dt;
+                            this.y += this.vy * dt;
+                            this.life -= dt;
+                        },
+                        draw(ctx) {
+                            ctx.save();
+                            ctx.fillStyle = this.color;
+                            ctx.globalAlpha = Math.max(0, this.life * 2);
+                            ctx.fillRect(this.x, this.y, this.size, this.size);
+                            ctx.restore();
+                        }
+                    });
+                }
+            }
+
+            // --- HUD & UI UPDATES ---
+            function updateHUD(timestamp, deltaTime) {
+                const elapsedTime = (timestamp - gameState.startTime) / 1000;
+                document.getElementById('time').textContent = elapsedTime.toFixed(1);
+                
+                const accuracy = stats.totalShots === 0 ? 100 : (stats.hits / stats.totalShots) * 100;
+                document.getElementById('accuracy').textContent = accuracy.toFixed(1);
+                document.getElementById('hits').textContent = stats.hits;
+                document.getElementById('misses').textContent = stats.misses;
+                
+                const avgReaction = stats.reactionTimes.length === 0 ? 'N/A' :
+                    (stats.reactionTimes.reduce((a, b) => a + b, 0) / stats.reactionTimes.length).toFixed(0) + 'ms';
+                document.getElementById('avg-reaction').textContent = avgReaction;
+                
+                const fps = Math.round(1 / deltaTime);
+                document.getElementById('fps').textContent = fps;
+                
+                document.getElementById('level-info').style.display = gameState.mode === 'ReflexGrid' ? 'block' : 'none';
+                document.getElementById('current-level').textContent = gameState.level;
+
+                if (gameState.mode === 'BotChallenge') {
+                    document.getElementById('player-score').textContent = stats.hits;
+                    document.getElementById('bot-score').textContent = bot.score;
+                }
+            }
+
+            function drawReticle(ctx, x, y) {
+                const reticle = reticles[currentReticleIndex];
+                ctx.save();
+                ctx.strokeStyle = reticle.color;
+                ctx.fillStyle = reticle.color;
+                ctx.lineWidth = 2;
+                ctx.shadowColor = reticle.color;
+                ctx.shadowBlur = 5;
+
+                switch (reticle.type) {
+                    case 'cross':
+                        ctx.beginPath();
+                        ctx.moveTo(x - reticle.size / 2, y);
+                        ctx.lineTo(x + reticle.size / 2, y);
+                        ctx.moveTo(x, y - reticle.size / 2);
+                        ctx.lineTo(x, y + reticle.size / 2);
+                        ctx.stroke();
+                        break;
+                    case 'dot':
+                        ctx.beginPath();
+                        ctx.arc(x, y, reticle.size / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'circle':
+                        ctx.beginPath();
+                        ctx.arc(x, y, reticle.size / 2, 0, Math.PI * 2);
+                        ctx.stroke();
+                        break;
+                }
+                ctx.restore();
+            }
+            
+            function drawPauseOverlay() {
+                ctx.save();
+                ctx.fillStyle = 'rgba(26, 26, 46, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+
+            function showSummary() {
+                const accuracy = stats.totalShots === 0 ? 0 : (stats.hits / stats.totalShots) * 100;
+                const avgReaction = stats.reactionTimes.length === 0 ? 0 : (stats.reactionTimes.reduce((a, b) => a + b, 0) / stats.reactionTimes.length);
+
+                document.getElementById('summary-accuracy').textContent = `${accuracy.toFixed(1)}%`;
+                document.getElementById('summary-avg-reaction').textContent = `${avgReaction.toFixed(0)}ms`;
+                
+                let title = 'Session Over!';
+                let score = stats.score;
+                
+                if (gameState.mode === 'BotChallenge') {
+                    const playerWon = stats.hits > bot.score;
+                    title = playerWon ? 'VICTORY!' : 'DEFEAT';
+                    if (playerWon) playSound(sounds.win); else playSound(sounds.lose);
+                    document.getElementById('summary-title').className = playerWon ? 'victory' : 'defeat';
+                    score = `${stats.hits} - ${bot.score}`;
+                    document.getElementById('summary-next-button').classList.add('hidden');
+                } else {
+                    playSound(sounds.win);
+                    document.getElementById('summary-title').className = '';
+                    document.getElementById('summary-next-button').classList.remove('hidden');
+                }
+                
+                document.getElementById('summary-title').textContent = title;
+                document.getElementById('summary-score').textContent = score;
+                
+                // Medals for Reflex Grid
+                const medalEl = document.getElementById('summary-medal');
+                if(gameState.mode === 'ReflexGrid') {
+                    medalEl.parentElement.classList.remove('hidden');
+                    let medal = 'None';
+                    let medalClass = '';
+                    if (accuracy > 95 && avgReaction < 350) { medal = '🥇 Gold'; medalClass = 'gold'; }
+                    else if (accuracy > 85 && avgReaction < 500) { medal = '🥈 Silver'; medalClass = 'silver'; }
+                    else if (accuracy > 70) { medal = '🥉 Bronze'; medalClass = 'bronze'; }
+                    medalEl.textContent = medal;
+                    medalEl.className = `value medal ${medalClass}`;
+                } else {
+                    medalEl.parentElement.classList.add('hidden');
+                }
+                
+                // Performance Tip
+                document.getElementById('tip-text').textContent = generatePerformanceTip(accuracy, stats.missLocations);
+                
+                showScreen('summary');
+            }
+
+            function generatePerformanceTip(accuracy, missLocations) {
+                if (accuracy < 80) return "Focus on hitting the target, even if it means slowing down a bit. Accuracy over speed!";
+                if (accuracy > 98) return "Incredible accuracy! Try pushing your speed on the next run.";
+                
+                const { q1, q2, q3, q4 } = missLocations;
+                const totalMisses = q1 + q2 + q3 + q4;
+                if (totalMisses < 5) return "Excellent performance. Keep it up!";
+
+                const missDistribution = {
+                    "top-right": q1,
+                    "top-left": q2,
+                    "bottom-left": q3,
+                    "bottom-right": q4
+                };
+                
+                const maxMissArea = Object.keys(missDistribution).reduce((a, b) => missDistribution[a] > missDistribution[b] ? a : b);
+                
+                if(missDistribution[maxMissArea] / totalMisses > 0.4) {
+                    return `You seem to be missing most shots in the ${maxMissArea} area. Pay extra attention to that quadrant.`;
+                }
+
+                return "Solid all-around performance. Consistency is key!";
+            }
+            
+            function changeReticle() {
+                currentReticleIndex = (currentReticleIndex + 1) % reticles.length;
+            }
+            
+            function playSound(sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => {}); // Ignore play errors
+            }
+
+            function updateActiveButton(containerSelector, activeButton) {
+                document.querySelectorAll(`${containerSelector} button`).forEach(b => b.classList.remove('active'));
+                activeButton.classList.add('active');
+            }
+
+            // --- START THE ENGINE ---
+            init();
+        });
+    </script>
+</body>
+</html>
