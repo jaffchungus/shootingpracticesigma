@@ -126,10 +126,10 @@
                 <div>Score: <span id="score">0</span></div>
                 <div>Accuracy: <span id="accuracy">100.0</span>%</div>
             </div>
-             <div id="hud-center" class="hud-group">
+            <div id="hud-center" class="hud-group">
                 <span id="time-remaining">60.0</span>
             </div>
-             <div class="hud-group">
+            <div class="hud-group">
                 <div id="targets-hit-label">Hits: <span id="hits">0</span> / <span id="total-targets">--</span></div>
                 <div>FPS: <span id="fps">60</span></div>
             </div>
@@ -249,7 +249,7 @@
                     const isTimed = gameState.mode !== 'FlickShot';
                     document.getElementById('duration-selector').parentElement.classList.toggle('hidden', !isTimed);
                 }));
-                 // Duration Selector
+                // Duration Selector
                 document.querySelectorAll('#duration-selector button').forEach(b => b.addEventListener('click', e => {
                     gameState.duration = parseInt(e.target.dataset.duration);
                     updateActiveButton('#duration-selector', e.target);
@@ -285,17 +285,17 @@
 
             // --- GAME FLOW & STATE ---
             function startGame(isRestart = false) {
-                 if (!isRestart) {
+                if (!isRestart) {
                     showScreen('game');
                     container.requestPointerLock();
-                 }
-                 startCountdown(3, () => {
+                }
+                startCountdown(3, () => {
                     resetState();
                     gameState.running = true;
                     gameState.paused = false;
                     gameState.startTime = performance.now();
                     setupScenario();
-                 });
+                });
             }
             
             function endGame() {
