@@ -3,1180 +3,537 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Sniper Game</title>
+    <title>GET SHAANKED!!!!!!!!!!!!!!</title>
+    <!-- Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; }
-        #gameContainer { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
-        #uiOverlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Allow clicks to pass through to the canvas */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            color: white;
-            font-size: 16px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-        }
-        .ui-panel {
-            background-color: rgba(0,0,0,0.5);
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin: 20px;
-            text-align: center;
-            min-width: 120px;
-        }
-        .top-ui { 
-            display: flex; 
-            justify-content: space-between; 
-            width: 100%; 
-            padding: 10px; /* Added padding for better spacing */
-            box-sizing: border-box; /* Include padding in width calculation */
-        }
-        .center-message { font-size: 24px; font-weight: bold; background-color: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;}
-        
-        /* New: No-scope crosshair */
-        #noScopeCrosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 20px; /* Size of the crosshair */
-            height: 20px;
-            display: block; /* Visible by default when not scoped */
-            pointer-events: none; /* Don't block clicks */
-            z-index: 5; /* Below scope overlay */
-            /* Simple crosshair SVG */
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><line x1="10" y1="0" x2="10" y2="20" stroke="white" stroke-width="2"/><line x1="0" y1="10" x2="20" y2="10" stroke="white" stroke-width="2"/></svg>');
-            background-size: 100% 100%;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            color: #e2e8f0; /* Light text color */
         }
 
-        #scopeOverlay {
+        #game-container {
+            position: relative;
+            width: 90vw; /* Responsive width */
+            max-width: 800px; /* Max width for desktop */
+            height: 50vh; /* Responsive height */
+            max-height: 450px; /* Max height for desktop */
+            background-color: #2d3748; /* Slightly lighter background for game area */
+            border-radius: 1rem; /* Rounded corners */
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5); /* Shadow for depth */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        canvas {
+            display: block;
+            background-color: #2d3748; /* Canvas background */
+            border-radius: 1rem;
+            width: 100%;
+            height: 100%;
+        }
+
+        #game-info {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
-            /* "Goated" Scope SVG based on the provided image */
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><line x1="50%" y1="0" x2="50%" y2="25%" stroke="black" stroke-width="4"/><line x1="50%" y1="75%" x2="50%" y2="100%" stroke="black" stroke-width="4"/><line x1="0" y1="50%" x2="25%" y2="50%" stroke="black" stroke-width="4"/><line x1="75%" y1="50%" x2="100%" y2="50%" stroke="black" stroke-width="4"/><circle cx="50%" cy="50%" r="1.5%" fill="red"/><line x1="50%" y1="50%" x2="50%" y2="50.5%" stroke="black" stroke-width="2"/><line x1="50%" y1="51%" x2="50%" y2="51.5%" stroke="black" stroke-width="2"/><line x1="50%" y1="51.5%" x2="50%" y2="52%" stroke="black" stroke-width="2"/><line x1="50%" y1="52.5%" x2="50%" y2="53%" stroke="black" stroke-width="2"/><line x1="50%" y1="53.5%" x2="50%" y2="54%" stroke="black" stroke-width="2"/><line x1="50%" y1="54.5%" x2="50%" y2="55%" stroke="black" stroke-width="2"/><line x1="50%" y1="55.5%" x2="50%" y2="56%" stroke="black" stroke-width="2"/><line x1="50%" y1="56.5%" x2="50%" y2="57%" stroke="black" stroke-width="2"/><line x1="50%" y1="57.5%" x2="50%" y2="58%" stroke="black" stroke-width="2"/><line x1="50%" y1="58.5%" x2="50%" y2="59%" stroke="black" stroke-width="2"/><line x1="50%" y1="59.5%" x2="50%" y2="60%" stroke="black" stroke-width="2"/><line x1="50%" y1="60.5%" x2="50%" y2="61%" stroke="black" stroke-width="2"/><line x1="50%" y1="61.5%" x2="50%" y2="62%" stroke="black" stroke-width="2"/><line x1="50%" y1="62.5%" x2="50%" y2="63%" stroke="black" stroke-width="2"/><line x1="50%" y1="63.5%" x2="50%" y2="64%" stroke="black" stroke-width="2"/><line x1="50%" y1="64.5%" x2="50%" y2="65%" stroke="black" stroke-width="2"/><line x1="50%" y1="65.5%" x2="50%" y2="66%" stroke="black" stroke-width="2"/><line x1="50%" y1="66.5%" x2="50%" y2="67%" stroke="black" stroke-width="2"/><line x1="50%" y1="67.5%" x2="50%" y2="68%" stroke="black" stroke-width="2"/><line x1="50%" y1="68.5%" x2="50%" y2="69%" stroke="black" stroke-width="2"/><line x1="50%" y1="69.5%" x2="50%" y2="70%" stroke="black" stroke-width="2"/><line x1="50%" y1="70.5%" x2="50%" y2="71%" stroke="black" stroke-width="2"/><line x1="50%" y1="71.5%" x2="50%" y2="72%" stroke="black" stroke-width="2"/><line x1="50%" y1="72.5%" x2="50%" y2="73%" stroke="black" stroke-width="2"/><line x1="50%" y1="73.5%" x2="50%" y2="74%" stroke="black" stroke-width="2"/><line x1="50%" y1="74.5%" x2="50%" y2="75%" stroke="black" stroke-width="2"/><line x1="50%" y1="75.5%" x2="50%" y2="76%" stroke="black" stroke-width="2"/><line x1="50%" y1="76.5%" x2="50%" y2="77%" stroke="black" stroke-width="2"/><line x1="50%" y1="77.5%" x2="50%" y2="78%" stroke="black" stroke-width="2"/><line x1="50%" y1="78.5%" x2="50%" y2="79%" stroke="black" stroke-width="2"/><line x1="50%" y1="79.5%" x2="50%" y2="80%" stroke="black" stroke-width="2"/><line x1="50%" y1="80.5%" x2="50%" y2="81%" stroke="black" stroke-width="2"/><line x1="50%" y1="81.5%" x2="50%" y2="82%" stroke="black" stroke-width="2"/><line x1="50%" y1="82.5%" x2="50%" y2="83%" stroke="black" stroke-width="2"/><line x1="50%" y1="83.5%" x2="50%" y2="84%" stroke="black" stroke-width="2"/><line x1="50%" y1="84.5%" x2="50%" y2="85%" stroke="black" stroke-width="2"/><line x1="50%" y1="85.5%" x2="50%" y2="86%" stroke="black" stroke-width="2"/><line x1="50%" y1="86.5%" x2="50%" y2="87%" stroke="black" stroke-width="2"/><line x1="50%" y1="87.5%" x2="50%" y2="88%" stroke="black" stroke-width="2"/><line x1="50%" y1="88.5%" x2="50%" y2="89%" stroke="black" stroke-width="2"/><line x1="50%" y1="89.5%" x2="50%" y2="90%" stroke="black" stroke-width="2"/><line x1="50%" y1="90.5%" x2="50%" y2="91%" stroke="black" stroke-width="2"/><line x1="50%" y1="91.5%" x2="50%" y2="92%" stroke="black" stroke-width="2"/><line x1="50%" y1="92.5%" x2="50%" y2="93%" stroke="black" stroke-width="2"/><line x1="50%" y1="93.5%" x2="50%" y2="94%" stroke="black" stroke-width="2"/><line x1="50%" y1="94.5%" x2="50%" y2="95%" stroke="black" stroke-width="2"/><line x1="50%" y1="95.5%" x2="50%" y2="96%" stroke="black" stroke-width="2"/><line x1="50%" y1="96.5%" x2="50%" y2="97%" stroke="black" stroke-width="2"/><line x1="50%" y1="97.5%" x2="50%" y2="98%" stroke="black" stroke-width="2"/><line x1="50%" y1="98.5%" x2="50%" y2="99%" stroke="black" stroke-width="2"/><line x1="50%" y1="99.5%" x2="50%" y2="100%" stroke="black" stroke-width="2"/><line x1="40%" y1="50%" x2="40%" y2="50%" stroke="black" stroke-width="2"/><line x1="35%" y1="50%" x2="35%" y2="50%" stroke="black" stroke-width="2"/><line x1="30%" y1="50%" x2="30%" y2="50%" stroke="black" stroke-width="2"/><line x1="25%" y1="50%" x2="25%" y2="50%" stroke="black" stroke-width="2"/><line x1="20%" y1="50%" x2="20%" y2="50%" stroke="black" stroke-width="2"/><line x1="15%" y1="50%" x2="15%" y2="50%" stroke="black" stroke-width="2"/><line x1="10%" y1="50%" x2="10%" y2="50%" stroke="black" stroke-width="2"/><line x1="5%" y1="50%" x2="5%" y2="50%" stroke="black" stroke-width="2"/><line x1="0%" y1="50%" x2="0%" y2="50%" stroke="black" stroke-width="2"/><line x1="60%" y1="50%" x2="60%" y2="50%" stroke="black" stroke-width="2"/><line x1="65%" y1="50%" x2="65%" y2="50%" stroke="black" stroke-width="2"/><line x1="70%" y1="50%" x2="70%" y2="50%" stroke="black" stroke-width="2"/><line x1="75%" y1="50%" x2="75%" y2="50%" stroke="black" stroke-width="2"/><line x1="80%" y1="50%" x2="80%" y2="50%" stroke="black" stroke-width="2"/><line x1="85%" y1="50%" x2="85%" y2="50%" stroke="black" stroke-width="2"/><line x1="90%" y1="50%" x2="90%" y2="50%" stroke="black" stroke-width="2"/><line x1="95%" y1="50%" x2="95%" y2="50%" stroke="black" stroke-width="2"/><line x1="100%" y1="50%" x2="100%" y2="50%" stroke="black" stroke-width="2"/></svg>');
-            background-size: 100% 100%;
-            display: none; /* Hidden by default */
-            pointer-events: none;
+            padding: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #a0aec0;
             z-index: 10;
         }
-        #scopeLensEffect {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            box-shadow: inset 0 0 0 100vw rgba(0,0,0,0.8); /* Creates the dark vignette effect */
-            display: none; /* Hidden by default */
-            pointer-events: none;
-            z-index: 9;
+
+        #title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #fbd38d; /* Gold-like color */
+            text-shadow: 0 0 10px rgba(251, 211, 141, 0.7);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            animation: pulseTitle 2s infinite alternate;
         }
-        #instructions, #gameOverScreen, #modeSelectionScreen, #difficultySelectionScreen, #settingsScreen {
+
+        @keyframes pulseTitle {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(1.02); opacity: 0.9; }
+        }
+
+        #message-box {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: rgba(0,0,0,0.85);
-            padding: 40px;
-            border-radius: 15px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 2rem;
+            border-radius: 1rem;
             text-align: center;
-            z-index: 100;
-            width: 90%;
-            max-width: 500px;
-        }
-        #instructions button, #gameOverScreen button, #modeSelectionScreen button, #difficultySelectionScreen button, #menuButton, #settingsScreen button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: background-color 0.3s ease;
-            pointer-events: all;
-            margin: 10px;
-        }
-        #instructions button:hover, #gameOverScreen button:hover, #modeSelectionScreen button:hover, #difficultySelectionScreen button:hover, #menuButton:hover, #settingsScreen button:hover {
-            background-color: #45a049;
-        }
-        #gameOverScreen {
-            display: none;
-        }
-        #modeSelectionScreen, #difficultySelectionScreen, #settingsScreen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        #difficultySelectionScreen, #settingsScreen {
+            z-index: 20;
             display: none; /* Hidden by default */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
         }
-        #menuButton, #settingsButton {
-            position: absolute; /* Position within the top-ui panel */
-            top: 20px; /* Aligned with other UI panels */
-            padding: 8px 15px; /* Smaller padding for a button within a panel */
-            font-size: 14px; /* Smaller font size */
-            background-color: rgba(0,0,0,0.5); /* Match panel background */
-            border-radius: 8px;
-            pointer-events: all; /* Make it clickable */
-            z-index: 101; /* Ensure it's above other UI elements */
-            margin: 0; /* Remove default margin from global button style */
+
+        #message-box p {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            color: #fbd38d;
         }
-        #menuButton {
-            right: 20px;
+
+        .btn {
+            background-color: #ecc94b; /* Yellow button */
+            color: #2d3748;
+            padding: 0.75rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
-        #settingsButton {
-            right: 100px; /* Position next to menu button */
+
+        .btn:hover {
+            background-color: #d69e2e; /* Darker yellow on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
         }
-        .slider-container {
-            width: 80%;
-            margin-top: 20px;
-            text-align: left;
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
-        .slider-container label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 16px;
-        }
-        .slider-container input[type="range"] {
+
+        /* Loading indicator */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            -webkit-appearance: none;
-            height: 8px;
-            background: #d3d3d3;
-            outline: none;
-            opacity: 0.7;
-            -webkit-transition: .2s;
-            transition: opacity .2s;
-            border-radius: 5px;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+            color: #e2e8f0;
+            font-size: 1.5rem;
         }
-        .slider-container input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
+
+        .spinner {
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
             border-radius: 50%;
-            background: #4CAF50;
-            cursor: pointer;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
         }
-        .slider-container input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4CAF50;
-            cursor: pointer;
-        }
-        .crosshair-option {
-            display: inline-block;
-            margin: 10px;
-            padding: 10px;
-            border: 2px solid transparent;
-            border-radius: 5px;
-            cursor: pointer;
-            background-color: rgba(255,255,255,0.1);
-        }
-        .crosshair-option.selected {
-            border: 2px solid #4CAF50;
-        }
-        .crosshair-option svg {
-            width: 50px;
-            height: 50px;
-            vertical-align: middle;
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body>
-    <div id="instructions">
-        <h2 class="text-3xl font-bold mb-4">Sniper Challenge</h2>
-        <p class="mb-2">Use your mouse to aim.</p>
-        <p class="mb-2">Left-click to shoot (💀 and 😛 modes).</p>
-        <p class="mb-2">Right-click to toggle scope.</p>
-        <p class="mb-4">Track the target in 🔫 mode.</p>
-        <button id="startButton">Start Game</button>
+<body class="bg-gray-900 text-gray-200 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <p>Loading the super hard level...</p>
     </div>
 
-    <div id="modeSelectionScreen" style="display: none;">
-        <h2 class="text-3xl font-bold mb-4">Select Game Mode</h2>
-        <button id="skullModeButton">💀 Mode</button>
-        <button id="pepModeButton">😛 Mode</button>
-        <button id="gunModeButton">🔫 Mode</button>
-        <button id="skullSkullSkullModeButton">💀💀💀 Mode</button> <!-- New mode button -->
-    </div>
+    <h1 id="title">GET SHAANKED!!!!!!!!!!!!!!</h1>
 
-    <div id="difficultySelectionScreen" style="display: none;">
-        <h2 class="text-3xl font-bold mb-4" id="difficultyTitle">Select Difficulty</h2>
-        <button id="easyDifficultyButton">Easy</button>
-        <button id="midDifficultyButton">Mid</button>
-        <button id="hardDifficultyButton">Hard</button>
-    </div>
-
-    <div id="settingsScreen" style="display: none;">
-        <h2 class="text-3xl font-bold mb-4">Settings</h2>
-        <div class="slider-container">
-            <label for="sensitivitySlider">Sensitivity: <span id="sensitivityValue">0.002</span></label>
-            <input type="range" id="sensitivitySlider" min="0.0005" max="0.005" step="0.0001" value="0.002">
+    <div id="game-container">
+        <div id="game-info">
+            <span id="score">SCORE: 0</span>
+            <span id="timer">TIME: 05:00</span>
         </div>
-        <div class="crosshair-selection mt-8">
-            <h3 class="text-xl font-bold mb-4">Select Crosshair Style</h3>
-            <div id="crosshairOptions">
-                <!-- Crosshair options will be dynamically loaded here -->
-            </div>
-        </div>
-        <button id="backToGameButton">Back to Game</button>
-    </div>
-
-    <div id="gameOverScreen">
-        <h2 class="text-3xl font-bold mb-4" id="gameOverTitle">Game Over</h2>
-        <p class="mb-2 text-xl" id="gameOverMessage">Your final score: <span id="finalScore">0</span></p>
-        <button id="playAgainButton">Play Again</button>
-    </div>
-
-    <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
-    </div>
-
-    <div id="uiOverlay">
-        <div class="top-ui">
-            <div id="scorePanel" class="ui-panel">Score: 0</div>
-            <div id="modePanel" class="ui-panel">Mode: N/A</div>
-            <div id="healthPanel" class="ui-panel" style="display: none;">Health: 50</div> <!-- New Health Panel -->
-            <!-- Settings button added here -->
-            <button id="settingsButton" class="ui-panel" style="pointer-events: all;">Settings</button>
-            <!-- Menu button added here -->
-            <button id="menuButton" class="ui-panel" style="pointer-events: all;">Menu</button>
-            <div id="ammoPanel" class="ui-panel">Ammo: ∞</div>
+        <div id="message-box" class="hidden">
+            <p id="game-message"></p>
+            <button id="restart-button" class="btn">RESTART</button>
         </div>
-        <div id="messagePanel" class="center-message" style="display: none;"></div>
-        <div class="ui-panel" id="targetsLeftPanel">Targets: ∞</div>
     </div>
-    <!-- No-scope crosshair element -->
-    <div id="noScopeCrosshair"></div>
-    <div id="scopeOverlay"></div>
-    <div id="scopeLensEffect"></div>
 
-    <script type="module">
-        // --- Game State & Variables ---
-        let scene, camera, renderer, raycaster;
-        let sniperRifle;
-        let activeTargets = [];
-        let enemyProjectiles = []; // New: Array to store enemy projectiles
-        let particles = []; // For explosions
-        let score = 0;
-        let ammo;
-        let isScoped = false;
-        const normalFov = 75, scopedFov = 15;
-        let gameStarted = false; // Indicates if game logic (movement, shooting) should be active
-        let currentMode = ''; // 'skull', 'pep', 'gun', 'skullSkullSkull'
-        let currentDifficulty = ''; // 'easy', 'mid', 'hard'
-        let currentSensitivity = 0.002; // Default sensitivity
-        let currentCrosshairStyle = 'default'; // Stores the key for the selected crosshair style
-        let playerHealth = 50; // New: Player health for skullSkullSkull mode
-        
-        // --- DOM Elements ---
-        const gameCanvas = document.getElementById('gameCanvas');
-        const scorePanel = document.getElementById('scorePanel');
-        const modePanel = document.getElementById('modePanel');
-        const ammoPanel = document.getElementById('ammoPanel');
-        const messagePanel = document.getElementById('messagePanel');
-        const targetsLeftPanel = document.getElementById('targetsLeftPanel');
-        const scopeOverlay = document.getElementById('scopeOverlay');
-        const scopeLensEffect = document.getElementById('scopeLensEffect');
-        const noScopeCrosshair = document.getElementById('noScopeCrosshair');
-        const instructions = document.getElementById('instructions');
-        const startButton = document.getElementById('startButton');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const gameOverTitle = document.getElementById('gameOverTitle');
-        const gameOverMessage = document.getElementById('gameOverMessage');
-        const finalScoreSpan = document.getElementById('finalScore');
-        const playAgainButton = document.getElementById('playAgainButton');
-        const modeSelectionScreen = document.getElementById('modeSelectionScreen');
-        const difficultySelectionScreen = document.getElementById('difficultySelectionScreen');
-        const difficultyTitle = document.getElementById('difficultyTitle');
-        const skullModeButton = document.getElementById('skullModeButton');
-        const pepModeButton = document.getElementById('pepModeButton');
-        const gunModeButton = document.getElementById('gunModeButton');
-        const skullSkullSkullModeButton = document.getElementById('skullSkullSkullModeButton');
-        const easyDifficultyButton = document.getElementById('easyDifficultyButton');
-        const midDifficultyButton = document.getElementById('midDifficultyButton');
-        const hardDifficultyButton = document.getElementById('hardDifficultyButton');
-        const menuButton = document.getElementById('menuButton');
-        const settingsButton = document.getElementById('settingsButton');
-        const settingsScreen = document.getElementById('settingsScreen');
-        const sensitivitySlider = document.getElementById('sensitivitySlider');
-        const sensitivityValueSpan = document.getElementById('sensitivityValue');
-        const crosshairOptionsContainer = document.getElementById('crosshairOptions');
-        const backToGameButton = document.getElementById('backToGameButton');
-        const healthPanel = document.getElementById('healthPanel');
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreDisplay = document.getElementById('score');
+            const timerDisplay = document.getElementById('timer');
+            const messageBox = document.getElementById('message-box');
+            const gameMessage = document.getElementById('game-message');
+            const restartButton = document.getElementById('restart-button');
+            const loadingOverlay = document.getElementById('loading-overlay');
 
+            // --- Game Configuration ---
+            const GAME_DURATION_SECONDS = 5 * 60; // 5 minutes
+            const PLAYER_SIZE = 30;
+            const JUMP_VELOCITY = -10;
+            const GRAVITY = 0.5;
+            const OBSTACLE_SPEED = 5; // Base speed, will increase for difficulty
+            const GROUND_HEIGHT = 50;
+            const OBSTACLE_MIN_GAP = 150; // Minimum horizontal gap between obstacles
+            const OBSTACLE_MAX_GAP = 300; // Maximum horizontal gap
+            const OBSTACLE_SPAWN_INTERVAL = 1000; // Time in ms between obstacle spawn attempts
+            const MAX_OBSTACLES = 10; // Max number of obstacles on screen
 
-        // --- Sound Effects ---
-        let shotSound, hitSound, dryFireSound, levelUpSound, explosionSound, trackingScoreSound, enemyShotSound, playerHitSound;
+            // --- Game State Variables ---
+            let player = {
+                x: 50,
+                y: 0, // Will be set to ground level
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
+                velocityY: 0,
+                isJumping: false
+            };
 
-        // --- Crosshair Definitions ---
-        const crosshairStyles = {
-            default: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><line x1="10" y1="0" x2="10" y2="20" stroke="white" stroke-width="2"/><line x1="0" y1="10" x2="20" y2="10" stroke="white" stroke-width="2"/></svg>',
-            dot: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="3" fill="white"/></svg>',
-            circle: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="8" stroke="white" stroke-width="2" fill="none"/><line x1="10" y1="0" x2="10" y2="20" stroke="white" stroke-width="1"/><line x1="0" y1="10" x2="20" y2="10" stroke="white" stroke-width="1"/></svg>',
-            chevron: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><line x1="10" y1="0" x2="10" y2="20" stroke="white" stroke-width="2"/><path d="M5 15 L10 10 L15 15" stroke="white" stroke-width="2" fill="none"/></svg>'
-        };
+            let obstacles = [];
+            let score = 0;
+            let gameRunning = false;
+            let gameOver = false;
+            let gameWon = false;
+            let startTime = 0;
+            let lastObstacleSpawnTime = 0;
+            let animationFrameId;
 
-        // --- Difficulty Settings ---
-        const difficultySettings = {
-            skull: {
-                easy: { sizeRange: [0.6, 0.8], moveRange: [5, 10], moveSpeedRange: [0.01, 0.03], moveAxes: ['x', 'y'], points: [5, 10] },
-                mid: { sizeRange: [0.4, 0.6], moveRange: [10, 20], moveSpeedRange: [0.03, 0.08], moveAxes: ['x', 'y', 'z'], points: [10, 20] },
-                hard: { sizeRange: [0.2, 0.6], moveRange: [10, 30], moveSpeedRange: [0.05, 0.15], moveAxes: ['x', 'y', 'z', 'xy', 'xz', 'yz'], points: [15, 30] }
-            },
-            pep: {
-                easy: { size: 0.8, zRange: [-40, -20], points: 5 }, // Larger, closer
-                mid: { size: 0.6, zRange: [-60, -30], points: 10 }, // Medium, mid-range
-                hard: { size: 0.4, zRange: [-80, -30], points: 15 } // Smaller, further
-            },
-            gun: {
-                easy: { moveRange: [5, 15], moveSpeedRange: [0.02, 0.06], moveAxes: ['x', 'y'], penaltyFactor: 10, perfectThreshold: 0.15 },
-                mid: { moveRange: [10, 25], moveSpeedRange: [0.04, 0.12], moveAxes: ['x', 'y', 'z'], penaltyFactor: 15, perfectThreshold: 0.1 },
-                hard: { moveRange: [15, 40], moveSpeedRange: [0.06, 0.18], moveAxes: ['x', 'y', 'z', 'xy', 'xz', 'yz'], penaltyFactor: 20, perfectThreshold: 0.05 }
-            },
-            skullSkullSkull: { // New mode settings
-                easy: {
-                    targetSizeRange: [0.8, 1.0], // Larger targets
-                    moveRange: [5, 10],
-                    moveSpeedRange: [0.01, 0.03],
-                    moveAxes: ['x', 'y'],
-                    fireRate: 3, // Seconds per shot (slower)
-                    projectileSpeed: 0.5,
-                    damagePerHit: 1,
-                    healthGainOnKill: 5,
-                    maxActiveEnemies: 3,
-                    scorePerKill: 10
-                },
-                mid: {
-                    targetSizeRange: [0.6, 0.8],
-                    moveRange: [10, 20],
-                    moveSpeedRange: [0.03, 0.08],
-                    moveAxes: ['x', 'y', 'z'],
-                    fireRate: 2, // Medium speed
-                    projectileSpeed: 1.0,
-                    damagePerHit: 1,
-                    healthGainOnKill: 5,
-                    maxActiveEnemies: 3,
-                    scorePerKill: 15
-                },
-                hard: {
-                    targetSizeRange: [0.4, 0.6], // Smaller targets
-                    moveRange: [15, 30],
-                    moveSpeedRange: [0.05, 0.15],
-                    moveAxes: ['x', 'y', 'z', 'xy', 'xz', 'yz'],
-                    fireRate: 1, // Faster
-                    projectileSpeed: 1.5,
-                    damagePerHit: 1,
-                    healthGainOnKill: 5,
-                    maxActiveEnemies: 3,
-                    scorePerKill: 20
+            // --- Utility Functions ---
+
+            // Function to set canvas dimensions based on container
+            function setCanvasDimensions() {
+                const container = document.getElementById('game-container');
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                player.y = canvas.height - GROUND_HEIGHT - player.height; // Reset player Y to ground
+            }
+
+            // Generate a random integer between min and max (inclusive)
+            function getRandomInt(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            // --- Drawing Functions ---
+
+            function drawPlayer() {
+                ctx.fillStyle = '#63b3ed'; // Blue player
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+                ctx.strokeStyle = '#2b6cb0'; // Darker blue border
+                ctx.lineWidth = 2;
+                ctx.strokeRect(player.x, player.y, player.width, player.height);
+            }
+
+            function drawObstacle(obstacle) {
+                ctx.fillStyle = '#e53e3e'; // Red obstacles
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                ctx.strokeStyle = '#9b2c2c'; // Darker red border
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            }
+
+            function drawGround() {
+                ctx.fillStyle = '#4a5568'; // Dark gray ground
+                ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+                ctx.strokeStyle = '#2d3748';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+            }
+
+            // --- Game Logic ---
+
+            function jump() {
+                if (!player.isJumping && gameRunning) {
+                    player.velocityY = JUMP_VELOCITY;
+                    player.isJumping = true;
                 }
             }
-        };
 
-        // --- Initialization ---
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
+            function updatePlayer() {
+                player.velocityY += GRAVITY;
+                player.y += player.velocityY;
 
-            camera = new THREE.PerspectiveCamera(normalFov, window.innerWidth / window.innerHeight, 0.1, 2000);
-            camera.position.set(0, 5, 10);
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ canvas: gameCanvas, antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 20, 5);
-            directionalLight.castShadow = true;
-            scene.add(directionalLight);
-
-            const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
-            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, side: THREE.DoubleSide });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
-
-            createSniperRifle();
-            raycaster = new THREE.Raycaster();
-            setupSounds();
-            setupEventListeners();
-            populateCrosshairOptions(); // Populate crosshair options on init
-            applyCrosshairStyle(currentCrosshairStyle); // Apply default crosshair
-            animate();
-        }
-
-        function createSniperRifle() {
-            sniperRifle = new THREE.Group();
-            const material = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.6 });
-            const scopeMaterial = new THREE.MeshStandardMaterial({ color: 0x111111 });
-            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 16), material);
-            barrel.rotation.x = Math.PI / 2;
-            barrel.position.set(0, -0.05, -0.6);
-            sniperRifle.add(barrel);
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.7), material);
-            body.position.set(0, -0.15, -0.2);
-            sniperRifle.add(body);
-            const scopeTube = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 16), scopeMaterial);
-            scopeTube.rotation.x = Math.PI / 2;
-            scopeTube.position.set(0, 0.05, -0.3);
-            sniperRifle.add(scopeTube);
-            sniperRifle.position.set(0.25, -0.3, -0.8);
-            sniperRifle.rotation.y = -0.05;
-            camera.add(sniperRifle);
-        }
-
-        function setupSounds() {
-            try {
-                shotSound = new Tone.NoiseSynth({
-                    noise: { type: 'white' },
-                    envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-                }).toDestination();
-
-                hitSound = new Tone.MembraneSynth({
-                    pitchDecay: 0.01,
-                    octaves: 6,
-                    envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.2 }
-                }).toDestination();
-                hitSound.volume.value = -10;
-
-                dryFireSound = new Tone.Player("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA").toDestination();
-                dryFireSound.autostart = false; // Prevent automatic playback
-                dryFireSound.load().then(() => {
-                    console.log("Dry fire sound loaded.");
-                }).catch(e => console.error("Error loading dry fire sound:", e));
-
-                levelUpSound = new Tone.Synth({
-                    oscillator: { type: "sine" },
-                    envelope: { attack: 0.05, decay: 0.2, sustain: 0.5, release: 0.8 }
-                }).toDestination();
-
-                explosionSound = new Tone.NoiseSynth({
-                    noise: { type: "pink", playbackRate: 0.5 },
-                    envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.2 }
-                }).toDestination();
-                explosionSound.volume.value = -5;
-
-                trackingScoreSound = new Tone.Synth({
-                    oscillator: { type: "sawtooth" },
-                    envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-                }).toDestination();
-                trackingScoreSound.volume.value = -15; // Quieter sound
-
-                enemyShotSound = new Tone.NoiseSynth({ // New: Enemy shot sound
-                    noise: { type: 'pink' },
-                    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
-                }).toDestination();
-                enemyShotSound.volume.value = -10;
-
-                playerHitSound = new Tone.MembraneSynth({ // New: Player hit sound
-                    pitchDecay: 0.05,
-                    octaves: 4,
-                    envelope: { attack: 0.001, decay: 0.3, sustain: 0.01, release: 0.3 }
-                }).toDestination();
-                playerHitSound.volume.value = -5;
-
-
-                console.log("Tone.js sounds initialized successfully.");
-                if (typeof Tone !== 'undefined') {
-                    console.log("Tone object is defined.");
-                } else {
-                    console.error("Tone object is NOT defined after initialization attempt.");
-                }
-
-            } catch (e) {
-                console.error("Error initializing sounds:", e);
-            }
-        }
-
-        function setupEventListeners() {
-            console.log("Setting up event listeners...");
-            window.addEventListener('resize', onWindowResize, false);
-            // Mouse events are attached to the document, but their logic is conditional on pointer lock.
-            document.addEventListener('mousemove', onMouseMove, false);
-            document.addEventListener('mousedown', onMouseDown, false);
-            document.addEventListener('contextmenu', (event) => event.preventDefault()); // Prevent right-click context menu
-            
-            startButton.addEventListener('click', () => { console.log("Start button clicked"); showModeSelection(); });
-            playAgainButton.addEventListener('click', () => { console.log("Play Again button clicked"); showModeSelection(); });
-            
-            skullModeButton.addEventListener('click', () => { console.log("Skull Mode button clicked"); showDifficultySelection('skull'); });
-            pepModeButton.addEventListener('click', () => { console.log("Pep Mode button clicked"); showDifficultySelection('pep'); });
-            gunModeButton.addEventListener('click', () => { console.log("Gun Mode button clicked"); showDifficultySelection('gun'); });
-            skullSkullSkullModeButton.addEventListener('click', () => { console.log("SkullSkullSkull Mode button clicked"); showDifficultySelection('skullSkullSkull'); });
-
-            easyDifficultyButton.addEventListener('click', () => { console.log("Easy Difficulty button clicked"); startGame(currentMode, 'easy'); });
-            midDifficultyButton.addEventListener('click', () => { console.log("Mid Difficulty button clicked"); startGame(currentMode, 'mid'); });
-            hardDifficultyButton.addEventListener('click', () => { console.log("Hard Difficulty button clicked"); startGame(currentMode, 'hard'); });
-
-            menuButton.addEventListener('click', () => { console.log("Menu button clicked"); showInGameMenu(); });
-            settingsButton.addEventListener('click', () => { console.log("Settings button clicked"); showSettings(); });
-            backToGameButton.addEventListener('click', () => { console.log("Back to Game button clicked"); hideSettings(); });
-
-            sensitivitySlider.addEventListener('input', (event) => {
-                console.log("Sensitivity slider changed");
-                currentSensitivity = parseFloat(event.target.value);
-                sensitivityValueSpan.textContent = currentSensitivity.toFixed(4);
-            });
-
-            document.addEventListener('pointerlockchange', () => {
-                // This event fires when pointer lock state changes.
-                // If pointer lock is lost AND game was active, it means user pressed ESC or browser exited.
-                if (document.pointerLockElement !== gameCanvas && gameStarted) {
-                    // Check if we are intentionally exiting for menu/settings.
-                    // If not, it's an unexpected exit (e.g., user pressed ESC).
-                    const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex';
-                    if (!isMenuOrSettingsOpen) { 
-                        if (currentMode !== 'gun') {
-                            gameOver("Pointer Lock Lost! Game Over.", score);
-                        } else {
-                            showMessage("Pointer Lock Lost. Click to resume tracking.", 99999);
-                            gameStarted = false; // Pause tracking
-                        }
-                    }
-                } else if (document.pointerLockElement === gameCanvas && !gameStarted) {
-                    // If pointer lock is gained AND game was not started (e.g., returning from menu/settings)
-                    // and no menu/settings screen is currently visible, then resume the game.
-                    const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex';
-                    if (!isMenuOrSettingsOpen && currentMode !== '' && currentDifficulty !== '') {
-                         startGame(currentMode, currentDifficulty); // Resume with existing mode/difficulty
-                    }
-                }
-            }, false);
-        }
-
-        // --- Game Logic ---
-        function showModeSelection() {
-            instructions.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            difficultySelectionScreen.style.display = 'none';
-            settingsScreen.style.display = 'none';
-            modeSelectionScreen.style.display = 'flex';
-            scorePanel.style.display = 'none';
-            modePanel.style.display = 'none';
-            ammoPanel.style.display = 'none';
-            targetsLeftPanel.style.display = 'none';
-            healthPanel.style.display = 'none'; // Hide health panel
-            menuButton.style.display = 'none';
-            settingsButton.style.display = 'none';
-            noScopeCrosshair.style.display = 'none';
-            scopeOverlay.style.display = 'none';
-            scopeLensEffect.style.display = 'none';
-
-            gameStarted = false; // Pause game logic
-            if (document.pointerLockElement) {
-                document.exitPointerLock(); // Explicitly exit pointer lock
-            }
-            // Clear all active targets and projectiles when going to menu
-            activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
-            activeTargets = [];
-            enemyProjectiles.forEach(proj => { if (proj.mesh && proj.mesh.parent) scene.remove(proj.mesh); });
-            enemyProjectiles = [];
-        }
-
-        function showDifficultySelection(mode) {
-            currentMode = mode;
-            modeSelectionScreen.style.display = 'none';
-            difficultyTitle.textContent = `Select Difficulty for ${mode === 'skull' ? '💀' : mode === 'pep' ? '😛' : mode === 'gun' ? '🔫' : '💀💀💀'} Mode`;
-            difficultySelectionScreen.style.display = 'flex';
-        }
-
-        async function startGame(mode, difficulty) {
-            modeSelectionScreen.style.display = 'none';
-            difficultySelectionScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            instructions.style.display = 'none';
-            settingsScreen.style.display = 'none';
-
-            if (Tone.context.state !== 'running') {
-                try { await Tone.start(); } catch (e) { console.error("AudioContext start failed:", e); }
-            }
-            
-            score = 0;
-            trackingScore = 0;
-            gameStarted = true;
-            currentMode = mode;
-            currentDifficulty = difficulty;
-            ammo = (currentMode === 'skull' || currentMode === 'pep' || currentMode === 'skullSkullSkull') ? Infinity : 0; // Ammo is infinite for 💀💀💀 mode
-
-            playerHealth = (currentMode === 'skullSkullSkull') ? 50 : 0; // Reset health for 💀💀💀 mode
-
-            // Clear existing targets and projectiles
-            activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
-            activeTargets = [];
-            enemyProjectiles.forEach(proj => { if (proj.mesh && proj.mesh.parent) scene.remove(proj.mesh); });
-            enemyProjectiles = [];
-
-            if (currentMode === 'gun') {
-                spawnNewTarget();
-                showMessage("Track the target!", 3000);
-            } else if (currentMode === 'skullSkullSkull') {
-                // Spawn initial 3 enemies for 💀💀💀 mode
-                const settings = difficultySettings[currentMode][currentDifficulty];
-                for (let i = 0; i < settings.maxActiveEnemies; i++) {
-                    spawnNewTarget();
-                }
-                showMessage(`Welcome to 💀💀💀 mode (${currentDifficulty.toUpperCase()})! Survive!`, 3000);
-            }
-            else { // skull or pep mode
-                spawnNewTarget();
-                showMessage(`Welcome to ${currentMode.toUpperCase()} mode (${currentDifficulty.toUpperCase()})!`, 3000);
-            }
-            
-            updateUI();
-            // Show game UI elements
-            scorePanel.style.display = 'block';
-            modePanel.style.display = 'block';
-            ammoPanel.style.display = 'block';
-            targetsLeftPanel.style.display = 'block';
-            if (currentMode === 'skullSkullSkull') {
-                healthPanel.style.display = 'block'; // Show health panel for this mode
-            } else {
-                healthPanel.style.display = 'none';
-            }
-            menuButton.style.display = 'block';
-            settingsButton.style.display = 'block';
-            
-            // Initial crosshair visibility based on isScoped state
-            noScopeCrosshair.style.display = isScoped ? 'none' : 'block';
-            scopeOverlay.style.display = isScoped ? 'block' : 'none';
-            scopeLensEffect.style.display = isScoped ? 'block' : 'none';
-
-            // Request pointer lock when game starts/resumes
-            if (document.pointerLockElement !== gameCanvas) {
-                gameCanvas.requestPointerLock();
-            }
-        }
-
-        function showInGameMenu() {
-            gameStarted = false; // Pause game logic
-            showModeSelection(); // Go to mode selection screen
-        }
-
-        function showSettings() {
-            gameStarted = false; // Pause game logic
-            // Hide all other screens
-            instructions.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            modeSelectionScreen.style.display = 'none';
-            difficultySelectionScreen.style.display = 'none';
-            // Hide game UI elements
-            scorePanel.style.display = 'none';
-            modePanel.style.display = 'none';
-            ammoPanel.style.display = 'none';
-            targetsLeftPanel.style.display = 'none';
-            healthPanel.style.display = 'none'; // Hide health panel
-            menuButton.style.display = 'none';
-            settingsButton.style.display = 'none';
-            noScopeCrosshair.style.display = 'none'; // Hide crosshair in settings
-            scopeOverlay.style.display = 'none'; // Ensure scope is hidden
-            scopeLensEffect.style.display = 'none'; // Ensure scope lens effect is hidden
-
-            settingsScreen.style.display = 'flex'; // Show settings screen
-            if (document.pointerLockElement) {
-                document.exitPointerLock(); // Explicitly exit pointer lock
-            }
-        }
-
-        function hideSettings() {
-            settingsScreen.style.display = 'none'; // Hide settings screen
-            if (currentMode && currentDifficulty) { // If a game was in progress, resume it
-                startGame(currentMode, currentDifficulty);
-            } else { // Otherwise, go back to mode selection
-                showModeSelection();
-            }
-        }
-
-        function spawnNewTarget() {
-            let targetData = {};
-            const minZ = -80, maxZ = -30;
-            const minY = 2, maxY = 15;
-            const minX = -30, maxX = 30;
-
-            const randomPos = new THREE.Vector3(
-                THREE.MathUtils.randFloat(minX, maxX),
-                THREE.MathUtils.randFloat(minY, maxY),
-                THREE.MathUtils.randFloat(minZ, maxZ)
-            );
-
-            const settings = difficultySettings[currentMode][currentDifficulty];
-
-            if (currentMode === 'skull') {
-                const randomSize = THREE.MathUtils.randFloat(settings.sizeRange[0], settings.sizeRange[1]);
-                targetData = {
-                    pos: randomPos,
-                    size: { rTop: randomSize, rBottom: randomSize, h: randomSize * 8 },
-                    color: new THREE.Color(Math.random() * 0xffffff),
-                    points: THREE.MathUtils.randInt(settings.points[0], settings.points[1]),
-                    moving: true,
-                    moveAxis: settings.moveAxes[Math.floor(Math.random() * settings.moveAxes.length)],
-                    moveRange: THREE.MathUtils.randFloat(settings.moveRange[0], settings.moveRange[1]),
-                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1]),
-                    canShoot: false
-                };
-            } else if (currentMode === 'pep') {
-                const pepRandomZ = THREE.MathUtils.randFloat(settings.zRange[0], settings.zRange[1]);
-                targetData = {
-                    pos: new THREE.Vector3(THREE.MathUtils.randFloat(minX, maxX), THREE.MathUtils.randFloat(minY, maxY), pepRandomZ),
-                    size: { rTop: settings.size, rBottom: settings.size, h: settings.size * 8 },
-                    color: 0xff0000,
-                    points: settings.points,
-                    moving: false,
-                    canShoot: false
-                };
-            } else if (currentMode === 'gun') {
-                const randomSize = 0.5; // Fixed size for tracking clarity
-                targetData = {
-                    pos: randomPos,
-                    size: { rTop: randomSize, rBottom: randomSize, h: randomSize * 8 },
-                    color: 0x00ffff,
-                    points: 0,
-                    moving: true,
-                    moveAxis: settings.moveAxes[Math.floor(Math.random() * settings.moveAxes.length)],
-                    moveRange: THREE.MathUtils.randFloat(settings.moveRange[0], settings.moveRange[1]),
-                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1]),
-                    canShoot: false
-                };
-            } else if (currentMode === 'skullSkullSkull') {
-                // Ensure we don't spawn more than maxActiveEnemies
-                const currentEnemies = activeTargets.filter(t => t.canShoot && !t.hit).length; // Count only non-hit shooting enemies
-                if (currentEnemies >= settings.maxActiveEnemies) {
-                    console.log("Max enemies reached, not spawning.");
-                    return;
-                }
-
-                const randomSize = THREE.MathUtils.randFloat(settings.targetSizeRange[0], settings.targetSizeRange[1]);
-                targetData = {
-                    pos: randomPos,
-                    size: { rTop: randomSize, rBottom: randomSize, h: randomSize * 8 },
-                    color: 0x8B0000, // Dark red for shooting enemies
-                    points: settings.scorePerKill, // Score for killing this enemy
-                    moving: true,
-                    moveAxis: settings.moveAxes[Math.floor(Math.random() * settings.moveAxes.length)],
-                    moveRange: THREE.MathUtils.randFloat(settings.moveRange[0], settings.moveRange[1]),
-                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1]),
-                    canShoot: true, // This target can shoot
-                    fireRate: settings.fireRate,
-                    projectileSpeed: settings.projectileSpeed,
-                    damagePerHit: settings.damagePerHit,
-                    lastShotTime: Date.now() / 1000 // Initialize last shot time
-                };
-            }
-
-            const targetMesh = createTargetMesh(targetData);
-            scene.add(targetMesh);
-            activeTargets.push({ mesh: targetMesh, hit: false, ...targetData });
-            updateUI();
-        }
-
-        function gameOver(title, finalScore) {
-            gameStarted = false;
-            gameOverTitle.textContent = title;
-            finalScoreSpan.textContent = finalScore;
-            gameOverScreen.style.display = 'flex';
-            // Hide game UI elements when game over
-            scorePanel.style.display = 'none';
-            modePanel.style.display = 'none';
-            ammoPanel.style.display = 'none';
-            targetsLeftPanel.style.display = 'none';
-            healthPanel.style.display = 'none'; // Hide health panel
-            menuButton.style.display = 'none';
-            settingsButton.style.display = 'none';
-            noScopeCrosshair.style.display = 'none';
-            scopeOverlay.style.display = 'none';
-            scopeLensEffect.style.display = 'none';
-            if (document.pointerLockElement) {
-                document.exitPointerLock();
-            }
-            // Clear all active targets and projectiles on game over
-            activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
-            activeTargets = [];
-            enemyProjectiles.forEach(proj => { if (proj.mesh && proj.mesh.parent) scene.remove(proj.mesh); });
-            enemyProjectiles = [];
-        }
-
-        function shoot() {
-            if (!gameStarted || (currentMode === 'gun' && !isScoped)) return; // Can't shoot in gun mode unless scoped
-            // For skullSkullSkull mode, ammo is infinite, so no need to check ammo.
-            // For other modes, check ammo.
-            if (ammo <= 0 && currentMode !== 'skullSkullSkull') {
-                if (dryFireSound && dryFireSound.loaded && Tone.context.state === 'running') dryFireSound.start();
-                return;
-            }
-            
-            if (shotSound && Tone.context.state === 'running') shotSound.triggerAttackRelease("8n");
-
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const liveTargets = activeTargets.filter(t => !t.hit).map(t => t.mesh);
-            const intersects = raycaster.intersectObjects(liveTargets);
-
-            if (intersects.length > 0) {
-                const hitObject = intersects[0].object;
-                const targetData = activeTargets.find(t => t.mesh === hitObject);
-
-                if (targetData && !targetData.hit) {
-                    targetData.hit = true; // Mark as hit immediately to prevent multiple hits
-                    score += targetData.points;
-                    if (currentMode === 'skullSkullSkull') {
-                        playerHealth = Math.min(50, playerHealth + targetData.healthGainOnKill); // Gain health, cap at 50
-                        updateUI(); // Update health display immediately
-                        // Spawn a new enemy to replace the killed one
-                        spawnNewTarget(); // This will check maxActiveEnemies before spawning
-                    }
-
-                    if (hitSound && Tone.context.state === 'running') hitSound.triggerAttackRelease("C2", "8n");
-                    if (explosionSound && Tone.context.state === 'running') explosionSound.triggerAttackRelease("8n");
-                    
-                    createExplosion(hitObject.position.clone(), hitObject.material.color.clone());
-                    if (hitObject.parent) scene.remove(hitObject);
-                    // Remove from activeTargets after a short delay to allow explosion to render
-                    // We need to filter it out immediately to prevent it from being targeted again.
-                    activeTargets = activeTargets.filter(t => t.mesh !== hitObject);
+                // Prevent player from going below ground
+                if (player.y + player.height > canvas.height - GROUND_HEIGHT) {
+                    player.y = canvas.height - GROUND_HEIGHT - player.height;
+                    player.velocityY = 0;
+                    player.isJumping = false;
                 }
             }
-            updateUI();
-        }
 
-        // --- Event Handlers & UI ---
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function onMouseMove(event) {
-            // Only control camera if pointer lock is active and game is started
-            if (!gameStarted || document.pointerLockElement !== gameCanvas) return;
-            const movementX = event.movementX || 0;
-            const movementY = event.movementY || 0;
-            // Use currentSensitivity here
-            const sensitivity = isScoped ? currentSensitivity * 0.5 : currentSensitivity; 
-            camera.rotation.y -= movementX * sensitivity;
-            camera.rotation.x -= movementY * sensitivity;
-            camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
-        }
-
-        function onMouseDown(event) {
-            // If game is not started (i.e., we are in a menu/settings screen) AND pointer lock is not active,
-            // a click on the canvas should request pointer lock to resume the game.
-            if (!gameStarted && document.pointerLockElement !== gameCanvas) {
-                gameCanvas.requestPointerLock();
-                return; // Do not process as shoot/scope
-            }
-            
-            // Only handle shooting/scoping if the game has started AND pointer lock is active.
-            if (!gameStarted || document.pointerLockElement !== gameCanvas) {
-                return;
-            }
-            
-            if (event.button === 0 && (currentMode === 'skull' || currentMode === 'pep' || currentMode === 'skullSkullSkull')) shoot();
-            else if (event.button === 2) toggleScope();
-        }
-
-        function toggleScope() {
-            if (!gameStarted) return; // Cannot toggle scope if game is not started
-            isScoped = !isScoped;
-            camera.fov = isScoped ? scopedFov : normalFov;
-            scopeOverlay.style.display = isScoped ? 'block' : 'none';
-            scopeLensEffect.style.display = isScoped ? 'block' : 'none';
-            noScopeCrosshair.style.display = isScoped ? 'none' : 'block'; // Toggle no-scope crosshair
-            camera.updateProjectionMatrix();
-        }
-
-        function updateUI() {
-            modePanel.textContent = `Mode: ${currentMode === 'skull' ? '💀' : currentMode === 'pep' ? '😛' : currentMode === 'gun' ? '🔫' : '💀💀💀'} (${currentDifficulty.toUpperCase()})`;
-            ammoPanel.textContent = `Ammo: ${currentMode === 'gun' ? 'N/A' : '∞'}`;
-            targetsLeftPanel.textContent = `Targets: ∞`; // Still infinite targets for all modes now
-
-            if (currentMode === 'gun') {
-                scorePanel.textContent = `Tracking Score: ${Math.floor(trackingScore)}`;
-            } else if (currentMode === 'skullSkullSkull') {
-                scorePanel.textContent = `Kills: ${score}`;
-                healthPanel.textContent = `Health: ${playerHealth}`;
-            } else { // skull or pep mode
-                scorePanel.textContent = `Score: ${score}`;
-            }
-        }
-
-        function showMessage(msg, duration = 2000, color = 'white') {
-            messagePanel.textContent = msg;
-            messagePanel.style.color = color;
-            messagePanel.style.display = 'block';
-            setTimeout(() => { messagePanel.style.display = 'none'; }, duration);
-        }
-
-        // --- Settings Functions ---
-        function populateCrosshairOptions() {
-            crosshairOptionsContainer.innerHTML = ''; // Clear existing options
-            for (const styleName in crosshairStyles) {
-                const optionDiv = document.createElement('div');
-                optionDiv.className = 'crosshair-option';
-                optionDiv.innerHTML = crosshairStyles[styleName];
-                optionDiv.dataset.style = styleName;
-                if (styleName === currentCrosshairStyle) {
-                    optionDiv.classList.add('selected');
-                }
-                optionDiv.addEventListener('click', () => {
-                    console.log(`Crosshair option '${styleName}' clicked`);
-                    applyCrosshairStyle(styleName);
-                    // Update selected class
-                    document.querySelectorAll('.crosshair-option').forEach(opt => opt.classList.remove('selected'));
-                    optionDiv.classList.add('selected');
-                });
-                crosshairOptionsContainer.appendChild(optionDiv);
-            }
-        }
-
-        function applyCrosshairStyle(styleName) {
-            currentCrosshairStyle = styleName;
-            noScopeCrosshair.style.backgroundImage = `url('data:image/svg+xml;utf8,${encodeURIComponent(crosshairStyles[styleName])}')`;
-        }
-
-        // --- Effects & Animation ---
-        function createTargetMesh(targetData) { // Renamed from createTarget
-            const geometry = new THREE.CylinderGeometry(targetData.size.rTop, targetData.size.rBottom, targetData.size.h, 16);
-            const material = new THREE.MeshStandardMaterial({ color: targetData.color });
-            const cylinder = new THREE.Mesh(geometry, material);
-            cylinder.position.copy(targetData.pos);
-            cylinder.castShadow = true;
-            cylinder.userData = { ...targetData };
-            return cylinder;
-        }
-
-        function createExplosion(position, color) {
-            const particleCount = 20;
-            const particleMaterial = new THREE.MeshBasicMaterial({ color: color, transparent: true });
-            const particleGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-            for (let i = 0; i < particleCount; i++) {
-                const particleMesh = new THREE.Mesh(particleGeometry, particleMaterial.clone());
-                particleMesh.position.copy(position);
-                const velocity = new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).normalize().multiplyScalar(0.5);
-                particles.push({ mesh: particleMesh, velocity: velocity, life: 1.0 });
-                scene.add(particleMesh);
-            }
-        }
-
-        function updateParticles(deltaTime) {
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.velocity.y -= 0.005; // Gravity
-                p.mesh.position.add(p.velocity);
-                p.life -= deltaTime * 1.5;
-                p.mesh.material.opacity = p.life;
-                if (p.life <= 0) {
-                    scene.remove(p.mesh);
-                    if (p.mesh.geometry) p.mesh.geometry.dispose();
-                    if (p.mesh.material) p.mesh.material.dispose();
-                    particles.splice(i, 1);
-                }
-            }
-        }
-
-        function updateMovingTargets() {
-            if (!gameStarted) return;
-            activeTargets.forEach(targetData => {
-                if (targetData.moving && !targetData.hit) {
-                    const target = targetData.mesh;
-                    const moveData = target.userData;
-                    if (!moveData.initialPos) moveData.initialPos = target.position.clone();
-
-                    const timeFactor = Date.now() * 0.001 * moveData.moveSpeed * 100;
-                    const range = moveData.moveRange / 2;
-
-                    switch (moveData.moveAxis) {
-                        case 'x':
-                            target.position.x = moveData.initialPos.x + Math.sin(timeFactor) * range;
-                            break;
-                        case 'y':
-                            target.position.y = moveData.initialPos.y + Math.sin(timeFactor) * range;
-                            break;
-                        case 'z':
-                            target.position.z = moveData.initialPos.z + Math.sin(timeFactor) * range;
-                            break;
-                        case 'xy':
-                            target.position.x = moveData.initialPos.x + Math.sin(timeFactor) * range;
-                            target.position.y = moveData.initialPos.y + Math.cos(timeFactor) * range;
-                            break;
-                        case 'xz':
-                            target.position.x = moveData.initialPos.x + Math.sin(timeFactor) * range;
-                            target.position.z = moveData.initialPos.z + Math.cos(timeFactor) * range;
-                            break;
-                        case 'yz':
-                            target.position.y = moveData.initialPos.y + Math.sin(timeFactor) * range;
-                            target.position.z = moveData.initialPos.z + Math.cos(timeFactor) * range;
-                            break;
-                        default:
-                            // For single-axis movements, ensure other axes remain at initial position
-                            if (moveData.moveAxis.length === 1) {
-                                if (moveData.moveAxis !== 'x') target.position.x = moveData.initialPos.x;
-                                if (moveData.moveAxis !== 'y') target.position.y = moveData.initialPos.y;
-                                if (moveData.moveAxis !== 'z') target.position.z = moveData.initialPos.z;
-                            }
-                            break;
-                    }
-                }
-            });
-        }
-
-        function updateTrackingMode(deltaTime) {
-            if (currentMode !== 'gun' || !gameStarted || activeTargets.length === 0) return;
-
-            const targetMesh = activeTargets[0].mesh;
-            if (!targetMesh) {
-                targetOnScreen = false;
-                return;
+            // Collision detection (AABB)
+            function checkCollision(obj1, obj2) {
+                return obj1.x < obj2.x + obj2.width &&
+                       obj1.x + obj1.width > obj2.x &&
+                       obj1.y < obj2.y + obj2.height &&
+                       obj1.y + obj1.height > obj2.y;
             }
 
-            // Project target position to screen space
-            const vector = new THREE.Vector3();
-            targetMesh.getWorldPosition(vector);
-            vector.project(camera);
+            // Function to create "super super super hard" obstacles
+            function createHardObstacle() {
+                const obstacleTypes = [
+                    'spike',        // Single spike
+                    'double_spike', // Two spikes close together
+                    'triple_spike', // Three spikes close together
+                    'block',        // A block
+                    'spike_block',  // Spike on top of a block
+                    'moving_spike', // Spike that moves up/down
+                    'narrow_gap',   // A small opening with spikes around it
+                    'wall_of_spikes' // A dense wall of spikes
+                ];
 
-            // Normalize to -1 to 1 range
-            const screenX = (vector.x + 1) / 2;
-            const screenY = (vector.y + 1) / 2;
+                const type = obstacleTypes[getRandomInt(0, obstacleTypes.length - 1)];
+                let newObstacles = [];
+                let obstacleHeight;
+                let obstacleWidth;
+                let obstacleY;
 
-            // Check if target is on screen
-            targetOnScreen = (screenX >= 0 && screenX <= 1 && screenY >= 0 && screenY <= 1);
-
-            const settings = difficultySettings[currentMode][currentDifficulty];
-
-            if (targetOnScreen) {
-                // Calculate distance from center (0.5, 0.5)
-                const distanceX = Math.abs(screenX - 0.5);
-                const distanceY = Math.abs(screenY - 0.5);
-                targetCenterDistance = Math.max(distanceX, distanceY);
-
-                if (targetCenterDistance <= settings.perfectThreshold) {
-                    trackingScore += deltaTime * 10; // More points for being perfectly centered
-                    if (trackingScoreSound && Tone.context.state === 'running') {
-                        trackingScoreSound.triggerAttackRelease("C4", "32n");
-                    }
-                } else if (targetCenterDistance <= (settings.perfectThreshold * 2)) { // Within a wider acceptable range
-                    trackingScore += deltaTime * 5;
-                } else {
-                    trackingScore += deltaTime * 1; // Minimal points if just on screen
-                }
-            } else {
-                trackingScore = Math.max(0, trackingScore - deltaTime * settings.penaltyFactor); // Penalize heavily for losing target
-            }
-            updateUI();
-        }
-
-        // New: Function to handle enemy shooting
-        function updateEnemyShooting(deltaTime) {
-            if (currentMode !== 'skullSkullSkull' || !gameStarted) return;
-
-            const settings = difficultySettings[currentMode][currentDifficulty];
-            const currentTime = Date.now() / 1000; // Current time in seconds
-
-            activeTargets.forEach(targetData => {
-                if (targetData.canShoot && !targetData.hit) {
-                    if (currentTime - targetData.lastShotTime >= targetData.fireRate) {
-                        // Time to shoot!
-                        const targetMesh = targetData.mesh;
-                        const targetPos = targetMesh.position.clone();
-                        const cameraPos = camera.position.clone();
-
-                        // Calculate direction from target to camera
-                        const direction = new THREE.Vector3().subVectors(cameraPos, targetPos).normalize();
-
-                        // Create projectile
-                        const projectileGeometry = new THREE.SphereGeometry(0.2, 8, 8);
-                        const projectileMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000 }); // Red projectile
-                        const projectileMesh = new THREE.Mesh(projectileGeometry, projectileMaterial);
-                        projectileMesh.position.copy(targetPos);
-                        scene.add(projectileMesh);
-
-                        enemyProjectiles.push({
-                            mesh: projectileMesh,
-                            velocity: direction.multiplyScalar(settings.projectileSpeed * 20 * deltaTime), // Scale speed
-                            damage: settings.damagePerHit
+                switch (type) {
+                    case 'spike':
+                        obstacleWidth = getRandomInt(15, 25);
+                        obstacleHeight = getRandomInt(40, 70);
+                        obstacleY = canvas.height - GROUND_HEIGHT - obstacleHeight;
+                        newObstacles.push({
+                            x: canvas.width,
+                            y: obstacleY,
+                            width: obstacleWidth,
+                            height: obstacleHeight,
+                            type: 'spike'
                         });
+                        break;
+                    case 'double_spike':
+                        obstacleWidth = getRandomInt(15, 25);
+                        obstacleHeight = getRandomInt(40, 70);
+                        obstacleY = canvas.height - GROUND_HEIGHT - obstacleHeight;
+                        newObstacles.push({ x: canvas.width, y: obstacleY, width: obstacleWidth, height: obstacleHeight, type: 'spike' });
+                        newObstacles.push({ x: canvas.width + obstacleWidth + getRandomInt(5, 10), y: obstacleY, width: obstacleWidth, height: obstacleHeight, type: 'spike' });
+                        break;
+                    case 'triple_spike':
+                        obstacleWidth = getRandomInt(15, 25);
+                        obstacleHeight = getRandomInt(40, 70);
+                        obstacleY = canvas.height - GROUND_HEIGHT - obstacleHeight;
+                        newObstacles.push({ x: canvas.width, y: obstacleY, width: obstacleWidth, height: obstacleHeight, type: 'spike' });
+                        newObstacles.push({ x: canvas.width + obstacleWidth + getRandomInt(5, 10), y: obstacleY, width: obstacleWidth, height: obstacleHeight, type: 'spike' });
+                        newObstacles.push({ x: canvas.width + (obstacleWidth * 2) + getRandomInt(10, 20), y: obstacleY, width: obstacleWidth, height: obstacleHeight, type: 'spike' });
+                        break;
+                    case 'block':
+                        obstacleWidth = getRandomInt(40, 80);
+                        obstacleHeight = getRandomInt(30, 60);
+                        obstacleY = canvas.height - GROUND_HEIGHT - obstacleHeight;
+                        newObstacles.push({
+                            x: canvas.width,
+                            y: obstacleY,
+                            width: obstacleWidth,
+                            height: obstacleHeight,
+                            type: 'block'
+                        });
+                        break;
+                    case 'spike_block':
+                        obstacleWidth = getRandomInt(40, 60);
+                        let blockHeight = getRandomInt(30, 50);
+                        let spikeHeight = getRandomInt(20, 40);
+                        obstacleY = canvas.height - GROUND_HEIGHT - blockHeight;
+                        newObstacles.push({ x: canvas.width, y: obstacleY, width: obstacleWidth, height: blockHeight, type: 'block' });
+                        newObstacles.push({ x: canvas.width + (obstacleWidth / 2) - (15 / 2), y: obstacleY - spikeHeight, width: 15, height: spikeHeight, type: 'spike' }); // Spike on top
+                        break;
+                    case 'moving_spike':
+                        obstacleWidth = 20;
+                        obstacleHeight = 60;
+                        obstacleY = canvas.height - GROUND_HEIGHT - obstacleHeight; // Start at ground
+                        newObstacles.push({
+                            x: canvas.width,
+                            y: obstacleY,
+                            width: obstacleWidth,
+                            height: obstacleHeight,
+                            type: 'moving_spike',
+                            moveDir: 1, // 1 for down, -1 for up
+                            moveSpeed: getRandomInt(1, 3),
+                            moveRange: getRandomInt(50, 100),
+                            initialY: obstacleY
+                        });
+                        break;
+                    case 'narrow_gap':
+                        // Create a ceiling obstacle and a floor obstacle with a small gap
+                        let floorSpikeHeight = getRandomInt(40, 60);
+                        let ceilingSpikeHeight = getRandomInt(40, 60);
+                        let gapHeight = player.height + getRandomInt(10, 20); // Very narrow gap
+                        let floorSpikeY = canvas.height - GROUND_HEIGHT - floorSpikeHeight;
+                        let ceilingSpikeY = floorSpikeY - gapHeight - ceilingSpikeHeight;
+                        obstacleWidth = getRandomInt(20, 30);
 
-                        if (enemyShotSound && Tone.context.state === 'running') {
-                            enemyShotSound.triggerAttackRelease("16n");
+                        newObstacles.push({ x: canvas.width, y: floorSpikeY, width: obstacleWidth, height: floorSpikeHeight, type: 'spike' });
+                        newObstacles.push({ x: canvas.width, y: ceilingSpikeY, width: obstacleWidth, height: ceilingSpikeHeight, type: 'spike' });
+                        break;
+                    case 'wall_of_spikes':
+                        let wallWidth = getRandomInt(80, 120);
+                        let spikeCount = Math.floor(wallWidth / 20); // Spikes every 20px
+                        for (let i = 0; i < spikeCount; i++) {
+                            obstacleWidth = getRandomInt(15, 25);
+                            obstacleHeight = getRandomInt(40, 70);
+                            obstacleY = canvas.height - GROUND_HEIGHT - obstacleHeight;
+                            newObstacles.push({
+                                x: canvas.width + (i * (obstacleWidth + getRandomInt(2, 5))),
+                                y: obstacleY,
+                                width: obstacleWidth,
+                                height: obstacleHeight,
+                                type: 'spike'
+                            });
                         }
-                        targetData.lastShotTime = currentTime; // Update last shot time
+                        break;
+                }
+                obstacles.push(...newObstacles);
+            }
+
+            function updateObstacles() {
+                // Remove obstacles that are off-screen
+                obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > 0);
+
+                // Move obstacles
+                obstacles.forEach(obstacle => {
+                    obstacle.x -= OBSTACLE_SPEED;
+
+                    // Update moving spikes
+                    if (obstacle.type === 'moving_spike') {
+                        obstacle.y += obstacle.moveSpeed * obstacle.moveDir;
+                        if (obstacle.y <= obstacle.initialY - obstacle.moveRange || obstacle.y >= obstacle.initialY) {
+                            obstacle.moveDir *= -1; // Reverse direction
+                        }
                     }
+
+                    // Check for collision with player
+                    if (checkCollision(player, obstacle)) {
+                        endGame(false); // Player hit an obstacle
+                    }
+                });
+
+                // Spawn new obstacles
+                const currentTime = Date.now();
+                if (currentTime - lastObstacleSpawnTime > OBSTACLE_SPAWN_INTERVAL && obstacles.length < MAX_OBSTACLES) {
+                    // Ensure a minimum gap after the last obstacle
+                    const lastObstacle = obstacles[obstacles.length - 1];
+                    if (!lastObstacle || (canvas.width - lastObstacle.x) > OBSTACLE_MIN_GAP) {
+                        createHardObstacle();
+                        lastObstacleSpawnTime = currentTime;
+                    }
+                }
+            }
+
+            function updateScoreAndTimer() {
+                if (gameRunning) {
+                    score += 1; // Increment score over time
+                    scoreDisplay.textContent = `SCORE: ${score}`;
+
+                    const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                    const remainingTime = GAME_DURATION_SECONDS - elapsedTime;
+
+                    if (remainingTime <= 0) {
+                        endGame(true); // Game won!
+                    } else {
+                        const minutes = Math.floor(remainingTime / 60);
+                        const seconds = remainingTime % 60;
+                        timerDisplay.textContent = `TIME: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    }
+                }
+            }
+
+            function gameLoop() {
+                if (!gameRunning && !gameOver && !gameWon) return; // Stop if game is not running
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+                drawGround();
+                drawPlayer();
+                obstacles.forEach(drawObstacle);
+
+                if (gameRunning) {
+                    updatePlayer();
+                    updateObstacles();
+                    updateScoreAndTimer();
+                }
+
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            function startGame() {
+                player = {
+                    x: 50,
+                    y: canvas.height - GROUND_HEIGHT - PLAYER_SIZE,
+                    width: PLAYER_SIZE,
+                    height: PLAYER_SIZE,
+                    velocityY: 0,
+                    isJumping: false
+                };
+                obstacles = [];
+                score = 0;
+                gameRunning = true;
+                gameOver = false;
+                gameWon = false;
+                startTime = Date.now();
+                lastObstacleSpawnTime = Date.now();
+                messageBox.classList.add('hidden'); // Hide message box
+                scoreDisplay.textContent = `SCORE: 0`;
+                timerDisplay.textContent = `TIME: ${String(Math.floor(GAME_DURATION_SECONDS / 60)).padStart(2, '0')}:00`;
+
+                // Start the game loop
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                gameLoop();
+            }
+
+            function endGame(win) {
+                gameRunning = false;
+                gameOver = true;
+                gameWon = win;
+                cancelAnimationFrame(animationFrameId); // Stop the animation loop
+
+                if (win) {
+                    gameMessage.textContent = "YOU SURVIVED! YOU ARE SHAANK-PROOF!";
+                    gameMessage.style.color = '#48bb78'; // Green for win
+                } else {
+                    gameMessage.textContent = "GET SHAANKED!!!!!!!!!!!!!!";
+                    gameMessage.style.color = '#e53e3e'; // Red for game over
+                }
+                messageBox.classList.remove('hidden'); // Show message box
+            }
+
+            // --- Event Listeners ---
+            window.addEventListener('resize', setCanvasDimensions);
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && gameRunning) {
+                    jump();
                 }
             });
-        }
-
-        // New: Function to update and check enemy projectiles
-        function updateEnemyProjectiles(deltaTime) {
-            for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
-                const projectile = enemyProjectiles[i];
-                projectile.mesh.position.add(projectile.velocity);
-
-                // Check for collision with player (camera)
-                const distanceToPlayer = projectile.mesh.position.distanceTo(camera.position);
-                const hitThreshold = 1.5; // Distance at which projectile hits player (adjust as needed)
-
-                if (distanceToPlayer < hitThreshold) {
-                    playerHealth -= projectile.damage;
-                    if (playerHitSound && Tone.context.state === 'running') {
-                        playerHitSound.triggerAttackRelease("C1", "8n");
-                    }
-                    showMessage(`-1 Health! Current: ${playerHealth}`, 1000, 'red');
-                    updateUI(); // Update health display
-
-                    // Remove projectile
-                    scene.remove(projectile.mesh);
-                    if (projectile.mesh.geometry) projectile.mesh.geometry.dispose();
-                    if (projectile.mesh.material) projectile.mesh.material.dispose();
-                    enemyProjectiles.splice(i, 1);
-
-                    if (playerHealth <= 0) {
-                        gameOver("You were defeated!", score);
-                        return; // Exit if game over
-                    }
-                } else if (projectile.mesh.position.length() > 200) { // Remove if too far away (avoids memory leak)
-                    scene.remove(projectile.mesh);
-                    if (projectile.mesh.geometry) projectile.mesh.geometry.dispose();
-                    if (projectile.mesh.material) projectile.mesh.material.dispose();
-                    enemyProjectiles.splice(i, 1);
+            canvas.addEventListener('click', () => {
+                if (gameRunning) {
+                    jump();
                 }
-            }
-        }
+            });
+            restartButton.addEventListener('click', startGame);
 
-
-        let lastTime = 0;
-        function animate(time) {
-            requestAnimationFrame(animate);
-            const deltaTime = (time - (lastTime || time)) / 1000;
-            lastTime = time;
-
-            if (gameStarted) { // Only update game logic if game is active
-                updateParticles(deltaTime);
-                updateMovingTargets();
-                updateTrackingMode(deltaTime);
-                updateEnemyShooting(deltaTime); // New: Update enemy shooting
-                updateEnemyProjectiles(deltaTime); // New: Update enemy projectiles
-            }
-            renderer.render(scene, camera);
-        }
-
-        // --- Start Application ---
-        init();
+            // Initial setup
+            setCanvasDimensions();
+            // Hide loading overlay and start game once everything is loaded
+            loadingOverlay.classList.add('hidden');
+            startGame();
+        });
     </script>
 </body>
 </html>
