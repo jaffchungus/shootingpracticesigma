@@ -33,7 +33,13 @@
             text-align: center;
             min-width: 120px;
         }
-        .top-ui { display: flex; justify-content: space-between; width: 100%; }
+        .top-ui { 
+            display: flex; 
+            justify-content: space-between; 
+            width: 100%; 
+            padding: 10px; /* Added padding for better spacing */
+            box-sizing: border-box; /* Include padding in width calculation */
+        }
         .center-message { font-size: 24px; font-weight: bold; background-color: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;}
         #scopeOverlay {
             position: absolute;
@@ -41,8 +47,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* Updated SVG for AK-47 style scope with a prominent red dot */
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><line x1="50%" y1="0" x2="50%" y2="45%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><line x1="50%" y1="55%" x2="50%" y2="100%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><line x1="0" y1="50%" x2="45%" y2="50%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><line x1="55%" y1="50%" x2="100%" y2="50%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><circle cx="50%" cy="50%" r="1.5%" fill="red"/></svg>');
+            /* Updated SVG for AK-47 style scope with a prominent red dot and slight design */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><line x1="50%" y1="0" x2="50%" y2="43%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><line x1="50%" y1="57%" x2="50%" y2="100%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><line x1="0" y1="50%" x2="43%" y2="50%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><line x1="57%" y1="50%" x2="100%" y2="50%" stroke="rgba(0,0,0,0.7)" stroke-width="3"/><circle cx="50%" cy="50%" r="1.8%" fill="red"/><line x1="47%" y1="52%" x2="53%" y2="52%" stroke="red" stroke-width="1.5"/></svg>');
             background-size: 100% 100%;
             display: none; /* Hidden by default */
             pointer-events: none;
@@ -73,7 +79,7 @@
             width: 90%;
             max-width: 500px;
         }
-        #instructions button, #gameOverScreen button, #modeSelectionScreen button, #difficultySelectionScreen button {
+        #instructions button, #gameOverScreen button, #modeSelectionScreen button, #difficultySelectionScreen button, #menuButton {
             background-color: #4CAF50;
             color: white;
             padding: 15px 30px;
@@ -86,7 +92,7 @@
             pointer-events: all;
             margin: 10px;
         }
-        #instructions button:hover, #gameOverScreen button:hover, #modeSelectionScreen button:hover, #difficultySelectionScreen button:hover {
+        #instructions button:hover, #gameOverScreen button:hover, #modeSelectionScreen button:hover, #difficultySelectionScreen button:hover, #menuButton:hover {
             background-color: #45a049;
         }
         #gameOverScreen {
@@ -99,6 +105,18 @@
         }
         #difficultySelectionScreen {
             display: none; /* Hidden by default */
+        }
+        #menuButton {
+            position: absolute; /* Position within the top-ui panel */
+            top: 20px; /* Aligned with other UI panels */
+            right: 20px; /* Aligned with other UI panels */
+            padding: 8px 15px; /* Smaller padding for a button within a panel */
+            font-size: 14px; /* Smaller font size */
+            background-color: rgba(0,0,0,0.5); /* Match panel background */
+            border-radius: 8px;
+            pointer-events: all; /* Make it clickable */
+            z-index: 101; /* Ensure it's above other UI elements */
+            margin: 0; /* Remove default margin from global button style */
         }
     </style>
 </head>
@@ -140,6 +158,8 @@
         <div class="top-ui">
             <div id="scorePanel" class="ui-panel">Score: 0</div>
             <div id="modePanel" class="ui-panel">Mode: N/A</div>
+            <!-- Menu button added here -->
+            <button id="menuButton" class="ui-panel" style="pointer-events: all;">Menu</button>
             <div id="ammoPanel" class="ui-panel">Ammo: ∞</div>
         </div>
         <div id="messagePanel" class="center-message" style="display: none;"></div>
@@ -192,7 +212,7 @@
         const easyDifficultyButton = document.getElementById('easyDifficultyButton');
         const midDifficultyButton = document.getElementById('midDifficultyButton');
         const hardDifficultyButton = document.getElementById('hardDifficultyButton');
-
+        const menuButton = document.getElementById('menuButton'); // New menu button
 
         // --- Sound Effects ---
         let shotSound, hitSound, dryFireSound, levelUpSound, explosionSound, trackingScoreSound;
@@ -302,6 +322,8 @@
             midDifficultyButton.addEventListener('click', () => startGame(currentMode, 'mid'));
             hardDifficultyButton.addEventListener('click', () => startGame(currentMode, 'hard'));
 
+            menuButton.addEventListener('click', showInGameMenu); // Event listener for the new menu button
+
             document.addEventListener('pointerlockchange', () => {
                 if (document.pointerLockElement !== gameCanvas && isScoped) toggleScope();
                 if (document.pointerLockElement !== gameCanvas && gameStarted) {
@@ -312,7 +334,10 @@
                         gameStarted = false;
                     }
                 } else if (document.pointerLockElement === gameCanvas && !gameStarted && currentMode !== '') {
-                    startGame(currentMode, currentDifficulty); // Resume with existing mode/difficulty
+                    // Only resume if it was a game in progress, not if we manually exited for menu
+                    if (!modeSelectionScreen.style.display === 'flex' && !difficultySelectionScreen.style.display === 'flex') {
+                         startGame(currentMode, currentDifficulty); // Resume with existing mode/difficulty
+                    }
                 }
             }, false);
         }
@@ -323,6 +348,13 @@
             gameOverScreen.style.display = 'none';
             difficultySelectionScreen.style.display = 'none'; // Ensure difficulty screen is hidden
             modeSelectionScreen.style.display = 'flex';
+            // Hide game UI elements when in menu
+            scorePanel.style.display = 'none';
+            modePanel.style.display = 'none';
+            ammoPanel.style.display = 'none';
+            targetsLeftPanel.style.display = 'none';
+            menuButton.style.display = 'none'; // Hide menu button when in menu
+            if (document.pointerLockElement) document.exitPointerLock(); // Exit pointer lock for menu
         }
 
         function showDifficultySelection(mode) {
@@ -356,17 +388,29 @@
             particles = [];
 
             if (currentMode === 'gun') {
-                if (sniperRifle) sniperRifle.visible = false;
+                // Sniper rifle is always visible now, no need to hide here
                 spawnNewTarget();
                 showMessage("Track the target!", 3000);
             } else {
-                if (sniperRifle) sniperRifle.visible = true;
+                // Sniper rifle is always visible now
                 spawnNewTarget();
                 showMessage(`Welcome to ${currentMode.toUpperCase()} mode (${currentDifficulty.toUpperCase()})!`, 3000);
             }
             
             updateUI();
+            // Show game UI elements
+            scorePanel.style.display = 'block';
+            modePanel.style.display = 'block';
+            ammoPanel.style.display = 'block';
+            targetsLeftPanel.style.display = 'block';
+            menuButton.style.display = 'block'; // Show menu button during game
             if (document.pointerLockElement !== gameCanvas) gameCanvas.requestPointerLock();
+        }
+
+        function showInGameMenu() {
+            gameStarted = false; // Pause game logic
+            showModeSelection(); // Go to mode selection screen
+            // The showModeSelection function will handle hiding game UI and exiting pointer lock
         }
 
         function spawnNewTarget() {
@@ -435,6 +479,12 @@
             gameOverTitle.textContent = title;
             finalScoreSpan.textContent = finalScore;
             gameOverScreen.style.display = 'flex';
+            // Hide game UI elements when game over
+            scorePanel.style.display = 'none';
+            modePanel.style.display = 'none';
+            ammoPanel.style.display = 'none';
+            targetsLeftPanel.style.display = 'none';
+            menuButton.style.display = 'none'; // Hide menu button
             if (document.pointerLockElement) document.exitPointerLock();
         }
 
@@ -502,7 +552,7 @@
             camera.fov = isScoped ? scopedFov : normalFov;
             scopeOverlay.style.display = isScoped ? 'block' : 'none';
             scopeLensEffect.style.display = isScoped ? 'block' : 'none';
-            if (sniperRifle) sniperRifle.visible = !isScoped;
+            // Removed: if (sniperRifle) sniperRifle.visible = !isScoped; // Rifle is now always visible
             camera.updateProjectionMatrix();
         }
 
