@@ -6,7 +6,8 @@
     <title>3D Sniper Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.com/libraries/tone"></script>
+    <!-- Corrected Tone.js CDN URL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; }
         #gameContainer { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
@@ -41,7 +42,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(0,0,0,0.7)" stroke-width="2"/><line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(0,0,0,0.7)" stroke-width="2"/><line x1="50%" y1="40%" x2="50%" y2="42%" stroke="black" stroke-width="1"/><line x1="50%" y1="58%" x2="50%" y2="60%" stroke="black" stroke-width="1"/><line x1="40%" y1="50%" x2="42%" y2="50%" stroke="black" stroke-width="1"/><line x1="58%" y1="50%" x2="60%" y2="50%" stroke="black" stroke-width="1"/><circle cx="50%" cy="50%" r="1%" fill="red"/></svg>');
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(0,0,0,0.7)" stroke-width="2"/><line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(0,0,0,0.7)" stroke-width="2"/><line x1="50%" y1="40%" x2="50%" y2="42%" stroke="black" stroke-width="1"/><line x1="50%" y1="58%" x2="50%" y2="60%" stroke="black" stroke-width="1"/><line x1="40%" y1="50%" x2="42%" y1="50%" stroke="black" stroke-width="1"/><line x1="58%" y1="50%" x2="60%" y1="50%" stroke="black" stroke-width="1"/><circle cx="50%" cy="50%" r="1%" fill="red"/></svg>');
             background-size: 100% 100%;
             display: none; /* Hidden by default */
             pointer-events: none;
@@ -256,8 +257,8 @@
             document.addEventListener('mousemove', onMouseMove, false);
             document.addEventListener('mousedown', onMouseDown, false);
             document.addEventListener('contextmenu', (event) => event.preventDefault());
-            startButton.addEventListener('click', showModeSelection);
-            playAgainButton.addEventListener('click', showModeSelection);
+            startButton.addEventListener('click', showModeSelection); // Changed to show mode selection
+            playAgainButton.addEventListener('click', showModeSelection); // Play again also goes to mode selection
             skullModeButton.addEventListener('click', () => startGame('skull'));
             pepModeButton.addEventListener('click', () => startGame('pep'));
             gunModeButton.addEventListener('click', () => startGame('gun'));
@@ -283,11 +284,11 @@
         function showModeSelection() {
             instructions.style.display = 'none';
             gameOverScreen.style.display = 'none';
-            modeSelectionScreen.style.display = 'flex';
+            modeSelectionScreen.style.display = 'flex'; // Show the mode selection screen
         }
 
         async function startGame(mode) {
-            modeSelectionScreen.style.display = 'none';
+            modeSelectionScreen.style.display = 'none'; // Hide mode selection
             gameOverScreen.style.display = 'none';
             instructions.style.display = 'none';
 
@@ -320,6 +321,7 @@
             }
             
             updateUI();
+            // Request pointer lock immediately after starting game
             if (document.pointerLockElement !== gameCanvas) gameCanvas.requestPointerLock();
         }
 
@@ -444,17 +446,13 @@
         }
 
         function onMouseDown(event) {
-            if (!gameStarted) {
-                if (document.pointerLockElement !== gameCanvas) {
-                    gameCanvas.requestPointerLock();
-                }
+            // Only handle shooting/scoping if the game has started AND pointer lock is active.
+            // If game hasn't started, or pointer lock is lost, the startGame() function
+            // or pointerlockchange event listener will handle requesting it.
+            if (!gameStarted || document.pointerLockElement !== gameCanvas) {
                 return;
             }
             
-            if (document.pointerLockElement !== gameCanvas) {
-                gameCanvas.requestPointerLock();
-                return;
-            }
             if (event.button === 0 && (currentMode === 'skull' || currentMode === 'pep')) shoot();
             else if (event.button === 2) toggleScope();
         }
@@ -473,7 +471,7 @@
             scorePanel.textContent = `Score: ${score}`;
             modePanel.textContent = `Mode: ${currentMode === 'skull' ? '💀' : currentMode === 'pep' ? '😛' : '🔫'}`;
             ammoPanel.textContent = `Ammo: ${currentMode === 'gun' ? 'N/A' : '∞'}`;
-            targetsLeftPanel.textContent = `Targets: ∞`;
+            targetsLeftPanel.textContent = `Targets: ∞`; // Always infinite targets
 
             if (currentMode === 'gun') {
                 scorePanel.textContent = `Tracking Score: ${Math.floor(trackingScore)}`;
