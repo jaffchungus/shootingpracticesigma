@@ -211,6 +211,7 @@
         <button id="skullModeButton">💀 Mode</button>
         <button id="pepModeButton">😛 Mode</button>
         <button id="gunModeButton">🔫 Mode</button>
+        <button id="skullSkullSkullModeButton">💀💀💀 Mode</button> <!-- New mode button -->
     </div>
 
     <div id="difficultySelectionScreen" style="display: none;">
@@ -249,6 +250,7 @@
         <div class="top-ui">
             <div id="scorePanel" class="ui-panel">Score: 0</div>
             <div id="modePanel" class="ui-panel">Mode: N/A</div>
+            <div id="healthPanel" class="ui-panel" style="display: none;">Health: 50</div> <!-- New Health Panel -->
             <!-- Settings button added here -->
             <button id="settingsButton" class="ui-panel" style="pointer-events: all;">Settings</button>
             <!-- Menu button added here -->
@@ -268,16 +270,18 @@
         let scene, camera, renderer, raycaster;
         let sniperRifle;
         let activeTargets = [];
-        let particles = [];
+        let enemyProjectiles = []; // New: Array to store enemy projectiles
         let score = 0;
         let ammo;
         let isScoped = false;
         const normalFov = 75, scopedFov = 15;
         let gameStarted = false;
-        let currentMode = ''; // 'skull', 'pep', 'gun'
+        let currentMode = ''; // 'skull', 'pep', 'gun', 'skullSkullSkull'
         let currentDifficulty = ''; // 'easy', 'mid', 'hard'
         let currentSensitivity = 0.002; // Default sensitivity
         let currentCrosshairStyle = 'default'; // Stores the key for the selected crosshair style
+        let playerHealth = 50; // New: Player health
+        let lastProjectileSpawnTime = 0; // For enemy projectile spawning
 
         // Tracking Mode Variables
         let trackingScore = 0;
@@ -293,7 +297,7 @@
         const targetsLeftPanel = document.getElementById('targetsLeftPanel');
         const scopeOverlay = document.getElementById('scopeOverlay');
         const scopeLensEffect = document.getElementById('scopeLensEffect');
-        const noScopeCrosshair = document.getElementById('noScopeCrosshair'); // New no-scope crosshair element
+        const noScopeCrosshair = document.getElementById('noScopeCrosshair');
         const instructions = document.getElementById('instructions');
         const startButton = document.getElementById('startButton');
         const gameOverScreen = document.getElementById('gameOverScreen');
@@ -307,24 +311,24 @@
         const skullModeButton = document.getElementById('skullModeButton');
         const pepModeButton = document.getElementById('pepModeButton');
         const gunModeButton = document.getElementById('gunModeButton');
+        const skullSkullSkullModeButton = document.getElementById('skullSkullSkullModeButton'); // New button
         const easyDifficultyButton = document.getElementById('easyDifficultyButton');
         const midDifficultyButton = document.getElementById('midDifficultyButton');
         const hardDifficultyButton = document.getElementById('hardDifficultyButton');
         const menuButton = document.getElementById('menuButton');
-        const settingsButton = document.getElementById('settingsButton'); // New settings button
-        const settingsScreen = document.getElementById('settingsScreen'); // New settings screen
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsScreen = document.getElementById('settingsScreen');
         const sensitivitySlider = document.getElementById('sensitivitySlider');
         const sensitivityValueSpan = document.getElementById('sensitivityValue');
         const crosshairOptionsContainer = document.getElementById('crosshairOptions');
         const backToGameButton = document.getElementById('backToGameButton');
+        const healthPanel = document.getElementById('healthPanel'); // New Health Panel
 
 
         // --- Sound Effects ---
-        let shotSound, hitSound, dryFireSound, levelUpSound, explosionSound, trackingScoreSound;
+        let shotSound, hitSound, dryFireSound, levelUpSound, explosionSound, trackingScoreSound, enemyShotSound, playerHitSound;
 
         // --- Crosshair Definitions ---
-        // Note: The scope's SVG is directly in the HTML style for simplicity and to match the "goated" request.
-        // These are for the no-scope crosshair.
         const crosshairStyles = {
             default: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><line x1="10" y1="0" x2="10" y2="20" stroke="white" stroke-width="2"/><line x1="0" y1="10" x2="20" y2="10" stroke="white" stroke-width="2"/></svg>',
             dot: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="3" fill="white"/></svg>',
@@ -348,6 +352,44 @@
                 easy: { moveRange: [5, 15], moveSpeedRange: [0.02, 0.06], moveAxes: ['x', 'y'], penaltyFactor: 10, perfectThreshold: 0.15 },
                 mid: { moveRange: [10, 25], moveSpeedRange: [0.04, 0.12], moveAxes: ['x', 'y', 'z'], penaltyFactor: 15, perfectThreshold: 0.1 },
                 hard: { moveRange: [15, 40], moveSpeedRange: [0.06, 0.18], moveAxes: ['x', 'y', 'z', 'xy', 'xz', 'yz'], penaltyFactor: 20, perfectThreshold: 0.05 }
+            },
+            skullSkullSkull: { // New mode settings
+                easy: {
+                    targetSizeRange: [0.8, 1.0], // Larger targets
+                    moveRange: [5, 10],
+                    moveSpeedRange: [0.01, 0.03],
+                    moveAxes: ['x', 'y'],
+                    fireRate: 3, // Seconds per shot (slower)
+                    projectileSpeed: 0.5,
+                    damagePerHit: 1,
+                    healthGainOnKill: 5,
+                    maxActiveEnemies: 3,
+                    scorePerKill: 10
+                },
+                mid: {
+                    targetSizeRange: [0.6, 0.8],
+                    moveRange: [10, 20],
+                    moveSpeedRange: [0.03, 0.08],
+                    moveAxes: ['x', 'y', 'z'],
+                    fireRate: 2, // Medium speed
+                    projectileSpeed: 1.0,
+                    damagePerHit: 1,
+                    healthGainOnKill: 5,
+                    maxActiveEnemies: 3,
+                    scorePerKill: 15
+                },
+                hard: {
+                    targetSizeRange: [0.4, 0.6], // Smaller targets
+                    moveRange: [15, 30],
+                    moveSpeedRange: [0.05, 0.15],
+                    moveAxes: ['x', 'y', 'z', 'xy', 'xz', 'yz'],
+                    fireRate: 1, // Faster
+                    projectileSpeed: 1.5,
+                    damagePerHit: 1,
+                    healthGainOnKill: 5,
+                    maxActiveEnemies: 3,
+                    scorePerKill: 20
+                }
             }
         };
 
@@ -444,6 +486,20 @@
                 }).toDestination();
                 trackingScoreSound.volume.value = -15; // Quieter sound
 
+                enemyShotSound = new Tone.NoiseSynth({ // New: Enemy shot sound
+                    noise: { type: 'pink' },
+                    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
+                }).toDestination();
+                enemyShotSound.volume.value = -10;
+
+                playerHitSound = new Tone.MembraneSynth({ // New: Player hit sound
+                    pitchDecay: 0.05,
+                    octaves: 4,
+                    envelope: { attack: 0.001, decay: 0.3, sustain: 0.01, release: 0.3 }
+                }).toDestination();
+                playerHitSound.volume.value = -5;
+
+
                 console.log("Tone.js sounds initialized successfully.");
                 if (typeof Tone !== 'undefined') {
                     console.log("Tone object is defined.");
@@ -469,6 +525,7 @@
             skullModeButton.addEventListener('click', () => { console.log("Skull Mode button clicked"); showDifficultySelection('skull'); });
             pepModeButton.addEventListener('click', () => { console.log("Pep Mode button clicked"); showDifficultySelection('pep'); });
             gunModeButton.addEventListener('click', () => { console.log("Gun Mode button clicked"); showDifficultySelection('gun'); });
+            skullSkullSkullModeButton.addEventListener('click', () => { console.log("SkullSkullSkull Mode button clicked"); showDifficultySelection('skullSkullSkull'); }); // New button listener
 
             easyDifficultyButton.addEventListener('click', () => { console.log("Easy Difficulty button clicked"); startGame(currentMode, 'easy'); });
             midDifficultyButton.addEventListener('click', () => { console.log("Mid Difficulty button clicked"); startGame(currentMode, 'mid'); });
@@ -485,22 +542,20 @@
             });
 
             document.addEventListener('pointerlockchange', () => {
-                // This listener fires when pointer lock state changes.
-                // If pointer lock is lost AND the game was active, it means user pressed ESC or browser exited.
-                // We handle this by showing game over or pausing for gun mode.
                 if (document.pointerLockElement !== gameCanvas && gameStarted) {
-                    if (currentMode !== 'gun') {
-                        gameOver("Pointer Lock Lost! Game Over.", score);
-                    } else {
-                        showMessage("Pointer Lock Lost. Click to resume tracking.", 99999);
-                        gameStarted = false; // Pause tracking
+                    const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex';
+                    if (!isMenuOrSettingsOpen) {
+                        if (currentMode !== 'gun') {
+                            gameOver("Pointer Lock Lost! Game Over.", score);
+                        } else {
+                            showMessage("Pointer Lock Lost. Click to resume tracking.", 99999);
+                            gameStarted = false;
+                        }
                     }
                 } else if (document.pointerLockElement === gameCanvas && !gameStarted) {
-                    // If pointer lock is gained AND game was not started (e.g., returning from menu/settings)
-                    // and no menu/settings screen is currently visible, then resume the game.
                     const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex';
                     if (!isMenuOrSettingsOpen && currentMode !== '' && currentDifficulty !== '') {
-                         startGame(currentMode, currentDifficulty); // Resume with existing mode/difficulty
+                         startGame(currentMode, currentDifficulty);
                     }
                 }
             }, false);
@@ -513,25 +568,32 @@
             difficultySelectionScreen.style.display = 'none';
             settingsScreen.style.display = 'none';
             modeSelectionScreen.style.display = 'flex';
-            // Hide game UI elements when in menu
             scorePanel.style.display = 'none';
             modePanel.style.display = 'none';
             ammoPanel.style.display = 'none';
             targetsLeftPanel.style.display = 'none';
+            healthPanel.style.display = 'none'; // Hide health panel
             menuButton.style.display = 'none';
             settingsButton.style.display = 'none';
-            noScopeCrosshair.style.display = 'none'; // Hide no-scope crosshair in menus
+            noScopeCrosshair.style.display = 'none';
+            scopeOverlay.style.display = 'none';
+            scopeLensEffect.style.display = 'none';
 
-            gameStarted = false; // Pause game logic
+            gameStarted = false;
             if (document.pointerLockElement) {
-                document.exitPointerLock(); // Explicitly exit pointer lock
+                document.exitPointerLock();
             }
+            // Clear all active targets and projectiles when going to menu
+            activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
+            activeTargets = [];
+            enemyProjectiles.forEach(proj => { if (proj.mesh && proj.mesh.parent) scene.remove(proj.mesh); });
+            enemyProjectiles = [];
         }
 
         function showDifficultySelection(mode) {
             currentMode = mode;
             modeSelectionScreen.style.display = 'none';
-            difficultyTitle.textContent = `Select Difficulty for ${mode === 'skull' ? '💀' : mode === 'pep' ? '😛' : '🔫'} Mode`;
+            difficultyTitle.textContent = `Select Difficulty for ${mode === 'skull' ? '💀' : mode === 'pep' ? '😛' : mode === 'gun' ? '🔫' : '💀💀💀'} Mode`;
             difficultySelectionScreen.style.display = 'flex';
         }
 
@@ -551,18 +613,28 @@
             gameStarted = true;
             currentMode = mode;
             currentDifficulty = difficulty;
-            ammo = (currentMode === 'skull' || currentMode === 'pep') ? Infinity : 0;
+            ammo = (currentMode === 'skull' || currentMode === 'pep' || currentMode === 'skullSkullSkull') ? Infinity : 0; // Ammo is infinite for 💀💀💀 mode
 
-            // Clear existing targets and particles
+            playerHealth = (currentMode === 'skullSkullSkull') ? 50 : 0; // Reset health for 💀💀💀 mode
+
+            // Clear existing targets and projectiles
             activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
             activeTargets = [];
-            particles.forEach(p => { if (p.mesh.parent) scene.remove(p.mesh); });
-            particles = [];
+            enemyProjectiles.forEach(proj => { if (proj.mesh && proj.mesh.parent) scene.remove(proj.mesh); });
+            enemyProjectiles = [];
 
             if (currentMode === 'gun') {
                 spawnNewTarget();
                 showMessage("Track the target!", 3000);
-            } else {
+            } else if (currentMode === 'skullSkullSkull') {
+                // Spawn initial 3 enemies for 💀💀💀 mode
+                const settings = difficultySettings[currentMode][currentDifficulty];
+                for (let i = 0; i < settings.maxActiveEnemies; i++) {
+                    spawnNewTarget();
+                }
+                showMessage(`Welcome to 💀💀💀 mode (${currentDifficulty.toUpperCase()})! Survive!`, 3000);
+            }
+            else { // skull or pep mode
                 spawnNewTarget();
                 showMessage(`Welcome to ${currentMode.toUpperCase()} mode (${currentDifficulty.toUpperCase()})!`, 3000);
             }
@@ -573,10 +645,15 @@
             modePanel.style.display = 'block';
             ammoPanel.style.display = 'block';
             targetsLeftPanel.style.display = 'block';
+            if (currentMode === 'skullSkullSkull') {
+                healthPanel.style.display = 'block'; // Show health panel for this mode
+            } else {
+                healthPanel.style.display = 'none';
+            }
             menuButton.style.display = 'block';
             settingsButton.style.display = 'block';
             
-            // Initial crosshair visibility
+            // Initial crosshair visibility based on isScoped state
             noScopeCrosshair.style.display = isScoped ? 'none' : 'block';
             scopeOverlay.style.display = isScoped ? 'block' : 'none';
             scopeLensEffect.style.display = isScoped ? 'block' : 'none';
@@ -604,9 +681,12 @@
             modePanel.style.display = 'none';
             ammoPanel.style.display = 'none';
             targetsLeftPanel.style.display = 'none';
+            healthPanel.style.display = 'none'; // Hide health panel
             menuButton.style.display = 'none';
             settingsButton.style.display = 'none';
             noScopeCrosshair.style.display = 'none'; // Hide crosshair in settings
+            scopeOverlay.style.display = 'none'; // Ensure scope is hidden
+            scopeLensEffect.style.display = 'none'; // Ensure scope lens effect is hidden
 
             settingsScreen.style.display = 'flex'; // Show settings screen
             if (document.pointerLockElement) {
@@ -624,11 +704,6 @@
         }
 
         function spawnNewTarget() {
-            activeTargets.forEach(target => {
-                if (target.mesh && target.mesh.parent) scene.remove(target.mesh);
-            });
-            activeTargets = [];
-
             let targetData = {};
             const minZ = -80, maxZ = -30;
             const minY = 2, maxY = 15;
@@ -652,7 +727,8 @@
                     moving: true,
                     moveAxis: settings.moveAxes[Math.floor(Math.random() * settings.moveAxes.length)],
                     moveRange: THREE.MathUtils.randFloat(settings.moveRange[0], settings.moveRange[1]),
-                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1])
+                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1]),
+                    canShoot: false
                 };
             } else if (currentMode === 'pep') {
                 const pepRandomZ = THREE.MathUtils.randFloat(settings.zRange[0], settings.zRange[1]);
@@ -661,7 +737,8 @@
                     size: { rTop: settings.size, rBottom: settings.size, h: settings.size * 8 },
                     color: 0xff0000,
                     points: settings.points,
-                    moving: false
+                    moving: false,
+                    canShoot: false
                 };
             } else if (currentMode === 'gun') {
                 const randomSize = 0.5; // Fixed size for tracking clarity
@@ -673,14 +750,39 @@
                     moving: true,
                     moveAxis: settings.moveAxes[Math.floor(Math.random() * settings.moveAxes.length)],
                     moveRange: THREE.MathUtils.randFloat(settings.moveRange[0], settings.moveRange[1]),
-                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1])
+                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1]),
+                    canShoot: false
+                };
+            } else if (currentMode === 'skullSkullSkull') {
+                // Ensure we don't spawn more than maxActiveEnemies
+                const currentEnemies = activeTargets.filter(t => t.canShoot).length;
+                if (currentEnemies >= settings.maxActiveEnemies) {
+                    console.log("Max enemies reached, not spawning.");
+                    return;
+                }
+
+                const randomSize = THREE.MathUtils.randFloat(settings.targetSizeRange[0], settings.targetSizeRange[1]);
+                targetData = {
+                    pos: randomPos,
+                    size: { rTop: randomSize, rBottom: randomSize, h: randomSize * 8 },
+                    color: 0x8B0000, // Dark red for shooting enemies
+                    points: settings.scorePerKill, // Score for killing this enemy
+                    moving: true,
+                    moveAxis: settings.moveAxes[Math.floor(Math.random() * settings.moveAxes.length)],
+                    moveRange: THREE.MathUtils.randFloat(settings.moveRange[0], settings.moveRange[1]),
+                    moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1]),
+                    canShoot: true, // This target can shoot
+                    fireRate: settings.fireRate,
+                    projectileSpeed: settings.projectileSpeed,
+                    damagePerHit: settings.damagePerHit,
+                    lastShotTime: Date.now() / 1000 // Initialize last shot time
                 };
             }
 
-            const targetMesh = createTarget(targetData);
+            const targetMesh = createTargetMesh(targetData); // Renamed createTarget to createTargetMesh
             scene.add(targetMesh);
             activeTargets.push({ mesh: targetMesh, hit: false, ...targetData });
-            targetOnScreen = true;
+            targetOnScreen = true; // This might need adjustment for multiple targets
             updateUI();
         }
 
@@ -694,17 +796,25 @@
             modePanel.style.display = 'none';
             ammoPanel.style.display = 'none';
             targetsLeftPanel.style.display = 'none';
+            healthPanel.style.display = 'none'; // Hide health panel
             menuButton.style.display = 'none';
             settingsButton.style.display = 'none';
-            noScopeCrosshair.style.display = 'none'; // Hide crosshair on game over
+            noScopeCrosshair.style.display = 'none';
+            scopeOverlay.style.display = 'none';
+            scopeLensEffect.style.display = 'none';
             if (document.pointerLockElement) {
-                document.exitPointerLock(); // Explicitly exit pointer lock
+                document.exitPointerLock();
             }
+            // Clear all active targets and projectiles on game over
+            activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
+            activeTargets = [];
+            enemyProjectiles.forEach(proj => { if (proj.mesh && proj.mesh.parent) scene.remove(proj.mesh); });
+            enemyProjectiles = [];
         }
 
         function shoot() {
-            if (!gameStarted || currentMode === 'gun') return;
-            if (ammo <= 0) {
+            if (!gameStarted || (currentMode === 'gun' && !isScoped)) return; // Can't shoot in gun mode unless scoped
+            if (ammo <= 0 && currentMode !== 'skullSkullSkull') { // Only check ammo for modes where it's limited
                 if (dryFireSound && dryFireSound.loaded && Tone.context.state === 'running') dryFireSound.start();
                 return;
             }
@@ -720,15 +830,24 @@
                 const targetData = activeTargets.find(t => t.mesh === hitObject);
 
                 if (targetData && !targetData.hit) {
-                    targetData.hit = true;
+                    targetData.hit = true; // Mark as hit immediately to prevent multiple hits
                     score += targetData.points;
+                    if (currentMode === 'skullSkullSkull') {
+                        playerHealth = Math.min(50, playerHealth + targetData.healthGainOnKill); // Gain health, cap at 50
+                        updateUI(); // Update health display immediately
+                        // Spawn a new enemy to replace the killed one
+                        spawnNewTarget();
+                    }
+
                     if (hitSound && Tone.context.state === 'running') hitSound.triggerAttackRelease("C2", "8n");
                     if (explosionSound && Tone.context.state === 'running') explosionSound.triggerAttackRelease("8n");
                     
                     createExplosion(hitObject.position.clone(), hitObject.material.color.clone());
                     if (hitObject.parent) scene.remove(hitObject);
-                    
-                    spawnNewTarget();
+                    // Remove from activeTargets after a short delay to allow explosion to render
+                    setTimeout(() => {
+                        activeTargets = activeTargets.filter(t => t.mesh !== hitObject);
+                    }, 100); // Small delay
                 }
             }
             updateUI();
@@ -742,6 +861,7 @@
         }
 
         function onMouseMove(event) {
+            // Only control camera if pointer lock is active and game is started
             if (!gameStarted || document.pointerLockElement !== gameCanvas) return;
             const movementX = event.movementX || 0;
             const movementY = event.movementY || 0;
@@ -753,19 +873,24 @@
         }
 
         function onMouseDown(event) {
+            // If game is not started (i.e., we are in a menu/settings screen) AND pointer lock is not active,
+            // a click on the canvas should request pointer lock to resume the game.
+            if (!gameStarted && document.pointerLockElement !== gameCanvas) {
+                gameCanvas.requestPointerLock();
+                return; // Do not process as shoot/scope
+            }
+            
             // Only handle shooting/scoping if the game has started AND pointer lock is active.
-            // If game hasn't started, or pointer lock is lost, the startGame() function
-            // or pointerlockchange event listener will handle requesting it.
             if (!gameStarted || document.pointerLockElement !== gameCanvas) {
                 return;
             }
             
-            if (event.button === 0 && (currentMode === 'skull' || currentMode === 'pep')) shoot();
+            if (event.button === 0 && (currentMode === 'skull' || currentMode === 'pep' || currentMode === 'skullSkullSkull')) shoot();
             else if (event.button === 2) toggleScope();
         }
 
         function toggleScope() {
-            if (!gameStarted) return;
+            if (!gameStarted) return; // Cannot toggle scope if game is not started
             isScoped = !isScoped;
             camera.fov = isScoped ? scopedFov : normalFov;
             scopeOverlay.style.display = isScoped ? 'block' : 'none';
@@ -775,13 +900,17 @@
         }
 
         function updateUI() {
-            scorePanel.textContent = `Score: ${score}`;
-            modePanel.textContent = `Mode: ${currentMode === 'skull' ? '💀' : currentMode === 'pep' ? '😛' : '🔫'} (${currentDifficulty.toUpperCase()})`;
+            modePanel.textContent = `Mode: ${currentMode === 'skull' ? '💀' : currentMode === 'pep' ? '😛' : currentMode === 'gun' ? '🔫' : '💀💀💀'} (${currentDifficulty.toUpperCase()})`;
             ammoPanel.textContent = `Ammo: ${currentMode === 'gun' ? 'N/A' : '∞'}`;
-            targetsLeftPanel.textContent = `Targets: ∞`;
+            targetsLeftPanel.textContent = `Targets: ∞`; // Still infinite targets for all modes now
 
             if (currentMode === 'gun') {
                 scorePanel.textContent = `Tracking Score: ${Math.floor(trackingScore)}`;
+            } else if (currentMode === 'skullSkullSkull') {
+                scorePanel.textContent = `Kills: ${score}`;
+                healthPanel.textContent = `Health: ${playerHealth}`;
+            } else { // skull or pep mode
+                scorePanel.textContent = `Score: ${score}`;
             }
         }
 
@@ -820,7 +949,7 @@
         }
 
         // --- Effects & Animation ---
-        function createTarget(targetData) {
+        function createTargetMesh(targetData) { // Renamed from createTarget
             const geometry = new THREE.CylinderGeometry(targetData.size.rTop, targetData.size.rBottom, targetData.size.h, 16);
             const material = new THREE.MeshStandardMaterial({ color: targetData.color });
             const cylinder = new THREE.Mesh(geometry, material);
@@ -950,14 +1079,97 @@
             updateUI();
         }
 
+        // New: Function to handle enemy shooting
+        function updateEnemyShooting(deltaTime) {
+            if (currentMode !== 'skullSkullSkull' || !gameStarted) return;
+
+            const settings = difficultySettings[currentMode][currentDifficulty];
+            const currentTime = Date.now() / 1000; // Current time in seconds
+
+            activeTargets.forEach(targetData => {
+                if (targetData.canShoot && !targetData.hit) {
+                    if (currentTime - targetData.lastShotTime >= targetData.fireRate) {
+                        // Time to shoot!
+                        const targetMesh = targetData.mesh;
+                        const targetPos = targetMesh.position.clone();
+                        const cameraPos = camera.position.clone();
+
+                        // Calculate direction from target to camera
+                        const direction = new THREE.Vector3().subVectors(cameraPos, targetPos).normalize();
+
+                        // Create projectile
+                        const projectileGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+                        const projectileMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000 }); // Red projectile
+                        const projectileMesh = new THREE.Mesh(projectileGeometry, projectileMaterial);
+                        projectileMesh.position.copy(targetPos);
+                        scene.add(projectileMesh);
+
+                        enemyProjectiles.push({
+                            mesh: projectileMesh,
+                            velocity: direction.multiplyScalar(settings.projectileSpeed * 20 * deltaTime), // Scale speed
+                            damage: settings.damagePerHit
+                        });
+
+                        if (enemyShotSound && Tone.context.state === 'running') {
+                            enemyShotSound.triggerAttackRelease("16n");
+                        }
+                        targetData.lastShotTime = currentTime; // Update last shot time
+                    }
+                }
+            });
+        }
+
+        // New: Function to update and check enemy projectiles
+        function updateEnemyProjectiles(deltaTime) {
+            for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+                const projectile = enemyProjectiles[i];
+                projectile.mesh.position.add(projectile.velocity);
+
+                // Check for collision with player (camera)
+                const distanceToPlayer = projectile.mesh.position.distanceTo(camera.position);
+                const hitThreshold = 1.5; // Distance at which projectile hits player
+
+                if (distanceToPlayer < hitThreshold) {
+                    playerHealth -= projectile.damage;
+                    if (playerHitSound && Tone.context.state === 'running') {
+                        playerHitSound.triggerAttackRelease("C1", "8n");
+                    }
+                    showMessage(`-1 Health! Current: ${playerHealth}`, 1000, 'red');
+                    updateUI(); // Update health display
+
+                    // Remove projectile
+                    scene.remove(projectile.mesh);
+                    if (projectile.mesh.geometry) projectile.mesh.geometry.dispose();
+                    if (projectile.mesh.material) projectile.mesh.material.dispose();
+                    enemyProjectiles.splice(i, 1);
+
+                    if (playerHealth <= 0) {
+                        gameOver("You were defeated!", score);
+                        return; // Exit if game over
+                    }
+                } else if (projectile.mesh.position.length() > 200) { // Remove if too far away
+                    scene.remove(projectile.mesh);
+                    if (projectile.mesh.geometry) projectile.mesh.geometry.dispose();
+                    if (projectile.mesh.material) projectile.mesh.material.dispose();
+                    enemyProjectiles.splice(i, 1);
+                }
+            }
+        }
+
+
         let lastTime = 0;
         function animate(time) {
             requestAnimationFrame(animate);
             const deltaTime = (time - (lastTime || time)) / 1000;
             lastTime = time;
-            updateParticles(deltaTime);
-            updateMovingTargets();
-            updateTrackingMode(deltaTime);
+
+            if (gameStarted) {
+                updateParticles(deltaTime);
+                updateMovingTargets();
+                updateTrackingMode(deltaTime);
+                updateEnemyShooting(deltaTime); // New: Update enemy shooting
+                updateEnemyProjectiles(deltaTime); // New: Update enemy projectiles
+            }
             renderer.render(scene, camera);
         }
 
