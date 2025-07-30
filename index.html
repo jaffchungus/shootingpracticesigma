@@ -271,22 +271,17 @@
         let sniperRifle;
         let activeTargets = [];
         let enemyProjectiles = []; // New: Array to store enemy projectiles
+        let particles = []; // For explosions
         let score = 0;
         let ammo;
         let isScoped = false;
         const normalFov = 75, scopedFov = 15;
-        let gameStarted = false;
+        let gameStarted = false; // Indicates if game logic (movement, shooting) should be active
         let currentMode = ''; // 'skull', 'pep', 'gun', 'skullSkullSkull'
         let currentDifficulty = ''; // 'easy', 'mid', 'hard'
         let currentSensitivity = 0.002; // Default sensitivity
         let currentCrosshairStyle = 'default'; // Stores the key for the selected crosshair style
-        let playerHealth = 50; // New: Player health
-        let lastProjectileSpawnTime = 0; // For enemy projectile spawning
-
-        // Tracking Mode Variables
-        let trackingScore = 0;
-        let targetOnScreen = false;
-        let targetCenterDistance = 0;
+        let playerHealth = 50; // New: Player health for skullSkullSkull mode
         
         // --- DOM Elements ---
         const gameCanvas = document.getElementById('gameCanvas');
@@ -311,7 +306,7 @@
         const skullModeButton = document.getElementById('skullModeButton');
         const pepModeButton = document.getElementById('pepModeButton');
         const gunModeButton = document.getElementById('gunModeButton');
-        const skullSkullSkullModeButton = document.getElementById('skullSkullSkullModeButton'); // New button
+        const skullSkullSkullModeButton = document.getElementById('skullSkullSkullModeButton');
         const easyDifficultyButton = document.getElementById('easyDifficultyButton');
         const midDifficultyButton = document.getElementById('midDifficultyButton');
         const hardDifficultyButton = document.getElementById('hardDifficultyButton');
@@ -322,7 +317,7 @@
         const sensitivityValueSpan = document.getElementById('sensitivityValue');
         const crosshairOptionsContainer = document.getElementById('crosshairOptions');
         const backToGameButton = document.getElementById('backToGameButton');
-        const healthPanel = document.getElementById('healthPanel'); // New Health Panel
+        const healthPanel = document.getElementById('healthPanel');
 
 
         // --- Sound Effects ---
@@ -515,9 +510,10 @@
         function setupEventListeners() {
             console.log("Setting up event listeners...");
             window.addEventListener('resize', onWindowResize, false);
+            // Mouse events are attached to the document, but their logic is conditional on pointer lock.
             document.addEventListener('mousemove', onMouseMove, false);
             document.addEventListener('mousedown', onMouseDown, false);
-            document.addEventListener('contextmenu', (event) => event.preventDefault());
+            document.addEventListener('contextmenu', (event) => event.preventDefault()); // Prevent right-click context menu
             
             startButton.addEventListener('click', () => { console.log("Start button clicked"); showModeSelection(); });
             playAgainButton.addEventListener('click', () => { console.log("Play Again button clicked"); showModeSelection(); });
@@ -525,7 +521,7 @@
             skullModeButton.addEventListener('click', () => { console.log("Skull Mode button clicked"); showDifficultySelection('skull'); });
             pepModeButton.addEventListener('click', () => { console.log("Pep Mode button clicked"); showDifficultySelection('pep'); });
             gunModeButton.addEventListener('click', () => { console.log("Gun Mode button clicked"); showDifficultySelection('gun'); });
-            skullSkullSkullModeButton.addEventListener('click', () => { console.log("SkullSkullSkull Mode button clicked"); showDifficultySelection('skullSkullSkull'); }); // New button listener
+            skullSkullSkullModeButton.addEventListener('click', () => { console.log("SkullSkullSkull Mode button clicked"); showDifficultySelection('skullSkullSkull'); });
 
             easyDifficultyButton.addEventListener('click', () => { console.log("Easy Difficulty button clicked"); startGame(currentMode, 'easy'); });
             midDifficultyButton.addEventListener('click', () => { console.log("Mid Difficulty button clicked"); startGame(currentMode, 'mid'); });
@@ -542,20 +538,26 @@
             });
 
             document.addEventListener('pointerlockchange', () => {
+                // This event fires when pointer lock state changes.
+                // If pointer lock is lost AND game was active, it means user pressed ESC or browser exited.
                 if (document.pointerLockElement !== gameCanvas && gameStarted) {
-                    const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex';
-                    if (!isMenuOrSettingsOpen) {
+                    // Check if we are intentionally exiting for menu/settings.
+                    // If not, it's an unexpected exit (e.g., user pressed ESC).
+                    const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex';
+                    if (!isMenuOrSettingsOpen) { 
                         if (currentMode !== 'gun') {
                             gameOver("Pointer Lock Lost! Game Over.", score);
                         } else {
                             showMessage("Pointer Lock Lost. Click to resume tracking.", 99999);
-                            gameStarted = false;
+                            gameStarted = false; // Pause tracking
                         }
                     }
                 } else if (document.pointerLockElement === gameCanvas && !gameStarted) {
-                    const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex';
+                    // If pointer lock is gained AND game was not started (e.g., returning from menu/settings)
+                    // and no menu/settings screen is currently visible, then resume the game.
+                    const isMenuOrSettingsOpen = modeSelectionScreen.style.display === 'flex' || difficultySelectionScreen.style.display === 'flex' || settingsScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex';
                     if (!isMenuOrSettingsOpen && currentMode !== '' && currentDifficulty !== '') {
-                         startGame(currentMode, currentDifficulty);
+                         startGame(currentMode, currentDifficulty); // Resume with existing mode/difficulty
                     }
                 }
             }, false);
@@ -579,9 +581,9 @@
             scopeOverlay.style.display = 'none';
             scopeLensEffect.style.display = 'none';
 
-            gameStarted = false;
+            gameStarted = false; // Pause game logic
             if (document.pointerLockElement) {
-                document.exitPointerLock();
+                document.exitPointerLock(); // Explicitly exit pointer lock
             }
             // Clear all active targets and projectiles when going to menu
             activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
@@ -755,7 +757,7 @@
                 };
             } else if (currentMode === 'skullSkullSkull') {
                 // Ensure we don't spawn more than maxActiveEnemies
-                const currentEnemies = activeTargets.filter(t => t.canShoot).length;
+                const currentEnemies = activeTargets.filter(t => t.canShoot && !t.hit).length; // Count only non-hit shooting enemies
                 if (currentEnemies >= settings.maxActiveEnemies) {
                     console.log("Max enemies reached, not spawning.");
                     return;
@@ -779,10 +781,9 @@
                 };
             }
 
-            const targetMesh = createTargetMesh(targetData); // Renamed createTarget to createTargetMesh
+            const targetMesh = createTargetMesh(targetData);
             scene.add(targetMesh);
             activeTargets.push({ mesh: targetMesh, hit: false, ...targetData });
-            targetOnScreen = true; // This might need adjustment for multiple targets
             updateUI();
         }
 
@@ -814,7 +815,9 @@
 
         function shoot() {
             if (!gameStarted || (currentMode === 'gun' && !isScoped)) return; // Can't shoot in gun mode unless scoped
-            if (ammo <= 0 && currentMode !== 'skullSkullSkull') { // Only check ammo for modes where it's limited
+            // For skullSkullSkull mode, ammo is infinite, so no need to check ammo.
+            // For other modes, check ammo.
+            if (ammo <= 0 && currentMode !== 'skullSkullSkull') {
                 if (dryFireSound && dryFireSound.loaded && Tone.context.state === 'running') dryFireSound.start();
                 return;
             }
@@ -836,7 +839,7 @@
                         playerHealth = Math.min(50, playerHealth + targetData.healthGainOnKill); // Gain health, cap at 50
                         updateUI(); // Update health display immediately
                         // Spawn a new enemy to replace the killed one
-                        spawnNewTarget();
+                        spawnNewTarget(); // This will check maxActiveEnemies before spawning
                     }
 
                     if (hitSound && Tone.context.state === 'running') hitSound.triggerAttackRelease("C2", "8n");
@@ -845,9 +848,8 @@
                     createExplosion(hitObject.position.clone(), hitObject.material.color.clone());
                     if (hitObject.parent) scene.remove(hitObject);
                     // Remove from activeTargets after a short delay to allow explosion to render
-                    setTimeout(() => {
-                        activeTargets = activeTargets.filter(t => t.mesh !== hitObject);
-                    }, 100); // Small delay
+                    // We need to filter it out immediately to prevent it from being targeted again.
+                    activeTargets = activeTargets.filter(t => t.mesh !== hitObject);
                 }
             }
             updateUI();
@@ -1127,7 +1129,7 @@
 
                 // Check for collision with player (camera)
                 const distanceToPlayer = projectile.mesh.position.distanceTo(camera.position);
-                const hitThreshold = 1.5; // Distance at which projectile hits player
+                const hitThreshold = 1.5; // Distance at which projectile hits player (adjust as needed)
 
                 if (distanceToPlayer < hitThreshold) {
                     playerHealth -= projectile.damage;
@@ -1147,7 +1149,7 @@
                         gameOver("You were defeated!", score);
                         return; // Exit if game over
                     }
-                } else if (projectile.mesh.position.length() > 200) { // Remove if too far away
+                } else if (projectile.mesh.position.length() > 200) { // Remove if too far away (avoids memory leak)
                     scene.remove(projectile.mesh);
                     if (projectile.mesh.geometry) projectile.mesh.geometry.dispose();
                     if (projectile.mesh.material) projectile.mesh.material.dispose();
@@ -1163,7 +1165,7 @@
             const deltaTime = (time - (lastTime || time)) / 1000;
             lastTime = time;
 
-            if (gameStarted) {
+            if (gameStarted) { // Only update game logic if game is active
                 updateParticles(deltaTime);
                 updateMovingTargets();
                 updateTrackingMode(deltaTime);
