@@ -6,7 +6,7 @@
     <title>3D Sniper Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdnjs.com/libraries/tone"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; }
         #gameContainer { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
@@ -23,6 +23,7 @@
             align-items: center;
             color: white;
             font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         }
         .ui-panel {
             background-color: rgba(0,0,0,0.5);
@@ -30,6 +31,7 @@
             border-radius: 8px;
             margin: 20px;
             text-align: center;
+            min-width: 120px;
         }
         .top-ui { display: flex; justify-content: space-between; width: 100%; }
         .center-message { font-size: 24px; font-weight: bold; background-color: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;}
@@ -57,7 +59,7 @@
             pointer-events: none;
             z-index: 9;
         }
-        #instructions, #gameOverScreen {
+        #instructions, #gameOverScreen, #modeSelectionScreen {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -70,7 +72,7 @@
             width: 90%;
             max-width: 500px;
         }
-        #instructions button, #gameOverScreen button {
+        #instructions button, #gameOverScreen button, #modeSelectionScreen button {
             background-color: #4CAF50;
             color: white;
             padding: 15px 30px;
@@ -81,12 +83,18 @@
             margin-top: 20px;
             transition: background-color 0.3s ease;
             pointer-events: all;
+            margin: 10px;
         }
-        #instructions button:hover, #gameOverScreen button:hover {
+        #instructions button:hover, #gameOverScreen button:hover, #modeSelectionScreen button:hover {
             background-color: #45a049;
         }
         #gameOverScreen {
             display: none;
+        }
+        #modeSelectionScreen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
     </style>
 </head>
@@ -94,10 +102,17 @@
     <div id="instructions">
         <h2 class="text-3xl font-bold mb-4">Sniper Challenge</h2>
         <p class="mb-2">Use your mouse to aim.</p>
-        <p class="mb-2">Left-click to shoot.</p>
+        <p class="mb-2">Left-click to shoot (💀 and 😛 modes).</p>
         <p class="mb-2">Right-click to toggle scope.</p>
-        <p class="mb-4">Eliminate all targets to advance to the next level.</p>
+        <p class="mb-4">Track the target in 🔫 mode.</p>
         <button id="startButton">Start Game</button>
+    </div>
+
+    <div id="modeSelectionScreen" style="display: none;">
+        <h2 class="text-3xl font-bold mb-4">Select Game Mode</h2>
+        <button id="skullModeButton">💀 Mode (Super Hard)</button>
+        <button id="pepModeButton">😛 Mode (Relaxed)</button>
+        <button id="gunModeButton">🔫 Mode (Tracking)</button>
     </div>
 
     <div id="gameOverScreen">
@@ -113,11 +128,11 @@
     <div id="uiOverlay">
         <div class="top-ui">
             <div id="scorePanel" class="ui-panel">Score: 0</div>
-            <div id="levelPanel" class="ui-panel">Level: 1</div>
-            <div id="ammoPanel" class="ui-panel">Ammo: 10/10</div>
+            <div id="modePanel" class="ui-panel">Mode: N/A</div>
+            <div id="ammoPanel" class="ui-panel">Ammo: ∞</div>
         </div>
         <div id="messagePanel" class="center-message" style="display: none;"></div>
-        <div class="ui-panel" id="targetsLeftPanel">Targets Left: 0</div>
+        <div class="ui-panel" id="targetsLeftPanel">Targets: ∞</div>
     </div>
     <div id="scopeOverlay"></div>
     <div id="scopeLensEffect"></div>
@@ -128,18 +143,23 @@
         let sniperRifle;
         let activeTargets = [];
         let particles = [];
-        let currentLevel = 0;
         let score = 0;
-        let ammo, maxAmmo;
+        let ammo;
         let isScoped = false;
         const normalFov = 75, scopedFov = 15;
         let gameStarted = false;
-        let levelInProgress = false;
+        let currentMode = ''; // 'skull', 'pep', 'gun'
+
+        // Tracking Mode Variables
+        let trackingScore = 0;
+        let targetOnScreen = false;
+        let targetCenterDistance = 0;
+        const trackingPerfectThreshold = 0.05; // Percentage of screen width/height
 
         // --- DOM Elements ---
         const gameCanvas = document.getElementById('gameCanvas');
         const scorePanel = document.getElementById('scorePanel');
-        const levelPanel = document.getElementById('levelPanel');
+        const modePanel = document.getElementById('modePanel');
         const ammoPanel = document.getElementById('ammoPanel');
         const messagePanel = document.getElementById('messagePanel');
         const targetsLeftPanel = document.getElementById('targetsLeftPanel');
@@ -152,18 +172,14 @@
         const gameOverMessage = document.getElementById('gameOverMessage');
         const finalScoreSpan = document.getElementById('finalScore');
         const playAgainButton = document.getElementById('playAgainButton');
+        const modeSelectionScreen = document.getElementById('modeSelectionScreen');
+        const skullModeButton = document.getElementById('skullModeButton');
+        const pepModeButton = document.getElementById('pepModeButton');
+        const gunModeButton = document.getElementById('gunModeButton');
+
 
         // --- Sound Effects ---
-        let shotSound, hitSound, dryFireSound, levelUpSound, explosionSound;
-
-        // --- Level Definitions ---
-        const gameLevels = [
-            { ammo: 5, targets: [ { pos: new THREE.Vector3(0, 2, -30), size: { rTop: 0.5, rBottom: 0.5, h: 4 }, color: 0xff0000, points: 10 } ], message: "Basic Training" },
-            { ammo: 8, targets: [ { pos: new THREE.Vector3(-15, 2, -50), size: { rTop: 0.4, rBottom: 0.4, h: 3.5 }, color: 0xff0000, points: 10 }, { pos: new THREE.Vector3(15, 2, -50), size: { rTop: 0.4, rBottom: 0.4, h: 3.5 }, color: 0xff8800, points: 10 } ], message: "Two Targets" },
-            { ammo: 10, targets: [ { pos: new THREE.Vector3(0, 5, -70), size: { rTop: 0.3, rBottom: 0.3, h: 3 }, color: 0xffff00, points: 15 }, { pos: new THREE.Vector3(-25, 2, -60), size: { rTop: 0.4, rBottom: 0.4, h: 3.5 }, color: 0xff0000, points: 10 }, { pos: new THREE.Vector3(25, 2, -60), size: { rTop: 0.4, rBottom: 0.4, h: 3.5 }, color: 0xff0000, points: 10 } ], message: "Distance and Spread" },
-            { ammo: 12, targets: [ { pos: new THREE.Vector3(-30, 3, -80), size: { rTop: 0.3, rBottom: 0.3, h: 3 }, color: 0x00ff00, points: 20, moving: true, moveAxis: 'x', moveRange: 20, moveSpeed: 0.02 }, { pos: new THREE.Vector3(30, 3, -80), size: { rTop: 0.3, rBottom: 0.3, h: 3 }, color: 0x00ff00, points: 20, moving: true, moveAxis: 'x', moveRange: 20, moveSpeed: -0.02 }, { pos: new THREE.Vector3(0, 2, -40), size: { rTop: 0.5, rBottom: 0.5, h: 4 }, color: 0xff0000, points: 10 } ], message: "Moving Targets!" },
-            { ammo: 15, targets: [ { pos: new THREE.Vector3(0, 10, -100), size: { rTop: 0.2, rBottom: 0.2, h: 2.5 }, color: 0x00ffff, points: 30 }, { pos: new THREE.Vector3(-40, 2, -90), size: { rTop: 0.3, rBottom: 0.3, h: 3 }, color: 0xff00ff, points: 25, moving: true, moveAxis: 'y', moveRange: 5, moveSpeed: 0.03 }, { pos: new THREE.Vector3(40, 2, -90), size: { rTop: 0.3, rBottom: 0.3, h: 3 }, color: 0xff00ff, points: 25, moving: true, moveAxis: 'y', moveRange: 5, moveSpeed: -0.03 }, { pos: new THREE.Vector3(0, 2, -60), size: { rTop: 0.4, rBottom: 0.4, h: 3.5 }, color: 0xffff00, points: 15, moving: true, moveAxis: 'x', moveRange: 30, moveSpeed: 0.04 } ], message: "Increased Complexity" }
-        ];
+        let shotSound, hitSound, dryFireSound, levelUpSound, explosionSound, trackingScoreSound;
 
         // --- Initialization ---
         function init() {
@@ -228,6 +244,8 @@
                 levelUpSound = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.05, decay: 0.2, sustain: 0.5, release: 0.8 } }).toDestination();
                 explosionSound = new Tone.NoiseSynth({ noise: { type: "pink", playbackRate: 0.5 }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.2 } }).toDestination();
                 explosionSound.volume.value = -5;
+                trackingScoreSound = new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
+                trackingScoreSound.volume.value = -15; // Quieter sound
             } catch (e) {
                 console.error("Error initializing sounds:", e);
             }
@@ -238,79 +256,133 @@
             document.addEventListener('mousemove', onMouseMove, false);
             document.addEventListener('mousedown', onMouseDown, false);
             document.addEventListener('contextmenu', (event) => event.preventDefault());
-            startButton.addEventListener('click', startGame);
-            playAgainButton.addEventListener('click', startGame);
-            document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== gameCanvas && isScoped) toggleScope(); }, false);
+            startButton.addEventListener('click', showModeSelection);
+            playAgainButton.addEventListener('click', showModeSelection);
+            skullModeButton.addEventListener('click', () => startGame('skull'));
+            pepModeButton.addEventListener('click', () => startGame('pep'));
+            gunModeButton.addEventListener('click', () => startGame('gun'));
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement !== gameCanvas && isScoped) toggleScope();
+                if (document.pointerLockElement !== gameCanvas && gameStarted) {
+                    // Game was running, pointer lock lost, maybe pause or show game over
+                    if (currentMode !== 'gun') { // Only game over on non-tracking modes for now
+                        gameOver("Pointer Lock Lost! Game Over.", score);
+                    } else {
+                        // For gun mode, just pause tracking or show a message
+                        showMessage("Pointer Lock Lost. Click to resume tracking.", 99999);
+                        gameStarted = false; // Effectively pause
+                    }
+                } else if (document.pointerLockElement === gameCanvas && !gameStarted && currentMode !== '') {
+                    // Re-engaged pointer lock after losing it, resume game
+                    startGame(currentMode);
+                }
+            }, false);
         }
 
         // --- Game Logic ---
-        async function startGame() {
+        function showModeSelection() {
             instructions.style.display = 'none';
             gameOverScreen.style.display = 'none';
+            modeSelectionScreen.style.display = 'flex';
+        }
+
+        async function startGame(mode) {
+            modeSelectionScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            instructions.style.display = 'none';
 
             if (Tone.context.state !== 'running') {
                 try { await Tone.start(); } catch (e) { console.error("AudioContext start failed:", e); }
             }
             
-            currentLevel = 0;
             score = 0;
+            trackingScore = 0;
             gameStarted = true;
+            currentMode = mode;
+            ammo = (currentMode === 'skull' || currentMode === 'pep') ? Infinity : 0; // Ammo only for shooting modes
+
+            // Clear existing targets and particles
+            activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
+            activeTargets = [];
+            particles.forEach(p => { if (p.mesh.parent) scene.remove(p.mesh); });
+            particles = [];
+
+            if (currentMode === 'gun') {
+                // For gun mode, ensure the rifle is hidden as there's no shooting
+                if (sniperRifle) sniperRifle.visible = false;
+                // Add a target for tracking
+                spawnNewTarget();
+                showMessage("Track the target!", 3000);
+            } else {
+                if (sniperRifle) sniperRifle.visible = true;
+                spawnNewTarget(); // Spawn the first target immediately
+                showMessage(`Welcome to ${currentMode.toUpperCase()} mode!`, 3000);
+            }
             
-            loadLevel(currentLevel);
+            updateUI();
             if (document.pointerLockElement !== gameCanvas) gameCanvas.requestPointerLock();
         }
 
-        function loadLevel(levelIndex) {
-            levelInProgress = false;
-            
+        function spawnNewTarget() {
+            // Remove existing targets before spawning new ones for infinite modes
             activeTargets.forEach(target => {
                 if (target.mesh && target.mesh.parent) scene.remove(target.mesh);
             });
             activeTargets = [];
-            particles.forEach(p => {
-                if (p.mesh.parent) scene.remove(p.mesh);
-            });
-            particles = [];
 
-            if (levelIndex >= gameLevels.length) {
-                gameOver("All Levels Cleared! YOU WIN!", score);
-                return;
+            let targetData = {};
+            const minZ = -80, maxZ = -30;
+            const minY = 2, maxY = 15;
+            const minX = -30, maxX = 30;
+
+            const randomPos = new THREE.Vector3(
+                THREE.MathUtils.randFloat(minX, maxX),
+                THREE.MathUtils.randFloat(minY, maxY),
+                THREE.MathUtils.randFloat(minZ, maxZ)
+            );
+
+            if (currentMode === 'skull') {
+                const randomSize = THREE.MathUtils.randFloat(0.2, 0.6); // Varying sizes
+                targetData = {
+                    pos: randomPos,
+                    size: { rTop: randomSize, rBottom: randomSize, h: randomSize * 8 },
+                    color: new THREE.Color(Math.random() * 0xffffff),
+                    points: 10 + Math.floor(Math.random() * 20), // Varying points
+                    moving: true,
+                    moveAxis: ['x', 'y', 'z', 'xy', 'xz', 'yz'][Math.floor(Math.random() * 6)], // Random axis
+                    moveRange: THREE.MathUtils.randFloat(10, 30), // Larger range
+                    moveSpeed: THREE.MathUtils.randFloat(0.05, 0.15) // Faster speed
+                };
+            } else if (currentMode === 'pep') {
+                targetData = {
+                    pos: randomPos,
+                    size: { rTop: 0.4, rBottom: 0.4, h: 3.5 }, // Fixed size
+                    color: 0xff0000,
+                    points: 5, // Fixed points
+                    moving: false
+                };
+            } else if (currentMode === 'gun') {
+                const randomSize = 0.5; // Fixed size for tracking clarity
+                targetData = {
+                    pos: randomPos,
+                    size: { rTop: randomSize, rBottom: randomSize, h: randomSize * 8 },
+                    color: 0x00ffff, // Distinct color for tracking
+                    points: 0, // No shooting points
+                    moving: true,
+                    moveAxis: ['x', 'y', 'z', 'xy', 'xz', 'yz'][Math.floor(Math.random() * 6)],
+                    moveRange: THREE.MathUtils.randFloat(15, 40), // Larger range for tracking
+                    moveSpeed: THREE.MathUtils.randFloat(0.06, 0.18) // Faster speed for tracking
+                };
             }
 
-            const levelData = gameLevels[levelIndex];
-            currentLevel = levelIndex;
-            ammo = levelData.ammo;
-            maxAmmo = levelData.ammo;
-
-            levelData.targets.forEach(tData => {
-                const targetMesh = createTarget(tData);
-                scene.add(targetMesh);
-                activeTargets.push({ mesh: targetMesh, hit: false, ...tData });
-            });
-
-            showMessage(`Level ${levelIndex + 1}: ${levelData.message}`, 3000);
+            const targetMesh = createTarget(targetData);
+            scene.add(targetMesh);
+            activeTargets.push({ mesh: targetMesh, hit: false, ...targetData });
+            targetOnScreen = true; // For gun mode, assume target is spawned and visible
             updateUI();
-            levelInProgress = true;
-        }
-
-        function checkLevelComplete() {
-            const unhitTargets = activeTargets.filter(t => !t.hit);
-            if (unhitTargets.length === 0 && levelInProgress) {
-                levelInProgress = false; // Prevent multiple triggers
-                showMessage(`Level ${currentLevel + 1} Cleared!`, 2000, 'lightgreen');
-                if (levelUpSound && Tone.context.state === 'running') levelUpSound.triggerAttackRelease("C5", "0.5s", Tone.now() + 0.1);
-                
-                setTimeout(() => {
-                    currentLevel++;
-                    loadLevel(currentLevel);
-                }, 2500);
-            } else if (ammo <= 0 && unhitTargets.length > 0 && levelInProgress) {
-                gameOver("Out of Ammo! Mission Failed.", score);
-            }
         }
 
         function gameOver(title, finalScore) {
-            levelInProgress = false;
             gameStarted = false;
             gameOverTitle.textContent = title;
             finalScoreSpan.textContent = finalScore;
@@ -319,14 +391,15 @@
         }
 
         function shoot() {
-            if (!levelInProgress) return;
+            if (!gameStarted || currentMode === 'gun') return; // Cannot shoot in gun mode
             if (ammo <= 0) {
                 if (dryFireSound && dryFireSound.loaded && Tone.context.state === 'running') dryFireSound.start();
                 return;
             }
 
-            ammo--;
-            // Corrected: NoiseSynth.triggerAttackRelease takes duration, not a note.
+            // Ammo is infinite in these modes, so no decrement
+            // ammo--; 
+            
             if (shotSound && Tone.context.state === 'running') shotSound.triggerAttackRelease("8n");
 
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -346,7 +419,8 @@
                     createExplosion(hitObject.position.clone(), hitObject.material.color.clone());
                     if (hitObject.parent) scene.remove(hitObject);
                     
-                    checkLevelComplete();
+                    // Immediately spawn a new target
+                    spawnNewTarget();
                 }
             }
             updateUI();
@@ -370,12 +444,18 @@
         }
 
         function onMouseDown(event) {
-            if (!gameStarted) return;
+            if (!gameStarted) {
+                if (document.pointerLockElement !== gameCanvas) {
+                    gameCanvas.requestPointerLock();
+                }
+                return;
+            }
+            
             if (document.pointerLockElement !== gameCanvas) {
                 gameCanvas.requestPointerLock();
                 return;
             }
-            if (event.button === 0) shoot();
+            if (event.button === 0 && (currentMode === 'skull' || currentMode === 'pep')) shoot();
             else if (event.button === 2) toggleScope();
         }
 
@@ -391,9 +471,13 @@
 
         function updateUI() {
             scorePanel.textContent = `Score: ${score}`;
-            levelPanel.textContent = `Level: ${currentLevel + 1}`;
-            ammoPanel.textContent = `Ammo: ${ammo}/${maxAmmo}`;
-            targetsLeftPanel.textContent = `Targets Left: ${activeTargets.filter(t => !t.hit).length}`;
+            modePanel.textContent = `Mode: ${currentMode === 'skull' ? '💀' : currentMode === 'pep' ? '😛' : '🔫'}`;
+            ammoPanel.textContent = `Ammo: ${currentMode === 'gun' ? 'N/A' : '∞'}`;
+            targetsLeftPanel.textContent = `Targets: ∞`;
+
+            if (currentMode === 'gun') {
+                scorePanel.textContent = `Tracking Score: ${Math.floor(trackingScore)}`;
+            }
         }
 
         function showMessage(msg, duration = 2000, color = 'white') {
@@ -444,20 +528,86 @@
         }
 
         function updateMovingTargets() {
-            if (!levelInProgress) return;
+            if (!gameStarted) return;
             activeTargets.forEach(targetData => {
                 if (targetData.moving && !targetData.hit) {
                     const target = targetData.mesh;
                     const moveData = target.userData;
                     if (!moveData.initialPos) moveData.initialPos = target.position.clone();
-                    // Using a simpler sine wave for smooth back-and-forth movement
-                    if (moveData.moveAxis === 'x') {
-                        target.position.x = moveData.initialPos.x + Math.sin(Date.now() * 0.001 * moveData.moveSpeed * 100) * (moveData.moveRange / 2);
-                    } else if (moveData.moveAxis === 'y') {
-                        target.position.y = moveData.initialPos.y + Math.sin(Date.now() * 0.001 * moveData.moveSpeed * 100) * (moveData.moveRange / 2);
+
+                    const timeFactor = Date.now() * 0.001 * moveData.moveSpeed * 100;
+                    const range = moveData.moveRange / 2;
+
+                    switch (moveData.moveAxis) {
+                        case 'x':
+                            target.position.x = moveData.initialPos.x + Math.sin(timeFactor) * range;
+                            break;
+                        case 'y':
+                            target.position.y = moveData.initialPos.y + Math.sin(timeFactor) * range;
+                            break;
+                        case 'z':
+                            target.position.z = moveData.initialPos.z + Math.sin(timeFactor) * range;
+                            break;
+                        case 'xy':
+                            target.position.x = moveData.initialPos.x + Math.sin(timeFactor) * range;
+                            target.position.y = moveData.initialPos.y + Math.cos(timeFactor) * range;
+                            break;
+                        case 'xz':
+                            target.position.x = moveData.initialPos.x + Math.sin(timeFactor) * range;
+                            target.position.z = moveData.initialPos.z + Math.cos(timeFactor) * range;
+                            break;
+                        case 'yz':
+                            target.position.y = moveData.initialPos.y + Math.sin(timeFactor) * range;
+                            target.position.z = moveData.initialPos.z + Math.cos(timeFactor) * range;
+                            break;
+                        default:
+                            break;
                     }
                 }
             });
+        }
+
+        function updateTrackingMode(deltaTime) {
+            if (currentMode !== 'gun' || !gameStarted || activeTargets.length === 0) return;
+
+            const targetMesh = activeTargets[0].mesh;
+            if (!targetMesh) {
+                targetOnScreen = false;
+                return;
+            }
+
+            // Project target position to screen space
+            const vector = new THREE.Vector3();
+            targetMesh.getWorldPosition(vector);
+            vector.project(camera);
+
+            // Normalize to -1 to 1 range
+            const screenX = (vector.x + 1) / 2;
+            const screenY = (vector.y + 1) / 2;
+
+            // Check if target is on screen
+            targetOnScreen = (screenX >= 0 && screenX <= 1 && screenY >= 0 && screenY <= 1);
+
+            if (targetOnScreen) {
+                // Calculate distance from center (0.5, 0.5)
+                const distanceX = Math.abs(screenX - 0.5);
+                const distanceY = Math.abs(screenY - 0.5);
+                targetCenterDistance = Math.max(distanceX, distanceY);
+
+                if (targetCenterDistance <= trackingPerfectThreshold) {
+                    trackingScore += deltaTime * 10; // More points for being perfectly centered
+                    if (trackingScoreSound && Tone.context.state === 'running') {
+                        trackingScoreSound.triggerAttackRelease("C4", "32n");
+                    }
+                } else if (targetCenterDistance <= 0.2) { // Within a wider acceptable range
+                    trackingScore += deltaTime * 5;
+                } else {
+                    trackingScore += deltaTime * 1; // Minimal points if just on screen
+                }
+            } else {
+                trackingScore = Math.max(0, trackingScore - deltaTime * 20); // Penalize heavily for losing target
+            }
+            updateUI();
         }
 
         let lastTime = 0;
@@ -467,6 +617,7 @@
             lastTime = time;
             updateParticles(deltaTime);
             updateMovingTargets();
+            updateTrackingMode(deltaTime);
             renderer.render(scene, camera);
         }
 
