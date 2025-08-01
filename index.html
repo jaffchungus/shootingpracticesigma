@@ -650,7 +650,7 @@
             currentDifficulty = difficulty;
             ammo = (currentMode === 'skull' || currentMode === 'pep' || currentMode === 'skullSkullSkull') ? Infinity : 0; // Ammo is infinite for 💀💀💀 mode
 
-            playerHealth = (currentMode === 'skullSkullSkull') ? 50 : 0; // Reset health for 💀💀💀 mode
+            playerHealth = (currentMode === 'skullSkullSkull') ? 50 : 0; // Reset health for �💀💀 mode
 
             // Clear existing targets and projectiles
             activeTargets.forEach(target => { if (target.mesh && target.mesh.parent) scene.remove(target.mesh); });
@@ -767,9 +767,10 @@
                     moveRange: THREE.MathUtils.randFloat(settings.moveRange[0], settings.moveRange[1]),
                     moveSpeed: THREE.MathUtils.randFloat(settings.moveSpeedRange[0], settings.moveSpeedRange[1]),
                     canShoot: true, // This target can shoot
-                    fireRate: settings.fireRate,
-                    projectileSpeed: settings.projectileSpeed,
-                    damagePerHit: settings.damagePerHit,
+                    fireRate: 3,
+                    projectileSpeed: 0.5,
+                    damagePerHit: 1,
+                    healthGainOnKill: 5,
                     lastShotTime: Date.now() / 1000 // Initialize last shot time
                 };
             } else { // For skull, pep, gun modes, use general ranges
@@ -855,22 +856,27 @@
         }
 
         function shoot() {
-            if (!gameStarted || (currentMode === 'gun' && !isScoped)) return; // Can't shoot in gun mode unless scoped
-            // For skullSkullSkull mode, ammo is infinite, so no need to check ammo.
-            // For other modes, check ammo.
-            if (ammo <= 0 && currentMode !== 'skullSkullSkull') {
-                if (Tone.context.state === 'running') dryFireSound.triggerAttackRelease("C1", "16n"); // Play dry fire sound
-                return;
-            }
-            
+            // Only shoot if game has started
+            if (!gameStarted) return;
+            // Gun mode requires scoping to shoot
+            if (currentMode === 'gun' && !isScoped) return;
+
+            // Play shot sound regardless of hit/miss
             if (shotSound && Tone.context.state === 'running') shotSound.triggerAttackRelease("8n");
 
-            // New: 50/50 miss chance for skullSkullSkull mode
-            if (currentMode === 'skullSkullSkull' && Math.random() < 0.5) {
-                showMessage("Miss!", 1000, 'orange'); // Indicate a miss
-                return; // Shot misses
+            // For modes with limited ammo, check if there's ammo
+            if ((currentMode === 'skull' || currentMode === 'pep') && ammo <= 0) {
+                if (Tone.context.state === 'running') dryFireSound.triggerAttackRelease("C1", "16n");
+                return;
             }
 
+            // Check for 50/50 miss chance in skullSkullSkull mode
+            if (currentMode === 'skullSkullSkull' && Math.random() < 0.5) {
+                showMessage("Miss!", 1000, 'orange'); // Indicate a miss
+                return; // Shot misses, so we don't proceed with raycasting
+            }
+
+            // If the shot didn't miss, proceed with the raycast
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             const liveTargets = activeTargets.filter(t => !t.hit).map(t => t.mesh);
             const intersects = raycaster.intersectObjects(liveTargets);
